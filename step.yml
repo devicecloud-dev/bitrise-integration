@@ -1,0 +1,236 @@
+title: "Device Cloud for Maestro"
+summary: "Uses devicecloud.dev to execute Maestro mobile tests"
+description: "Executes Maestro mobile tests on devicecloud.dev with configurable parameters"
+website: "https://devicecloud.dev"
+source_code_url: "https://github.com/devicecloud-dev/bitrise-integration"
+issue_tracker_url: "https://github.com/orgs/devicecloud-dev/discussions"
+host_os_tags:
+  - osx-10.10
+  - ubuntu-16.04
+
+project_type_tags:
+  - ios
+  - android
+  - xamarin
+  - react-native
+  - cordova
+  - ionic
+  - flutter
+
+type_tags:
+  - test
+
+is_always_run: false
+is_skippable: false
+run_if: ""
+
+deps:
+  brew:
+    - name: git
+    - name: node
+  apt_get:
+    - name: git
+    - name: node
+
+toolkit:
+  bash:
+    entry_file: step.sh
+
+inputs:
+  - api_key: ""
+    opts:
+      title: "Device Cloud API Key"
+      summary: "devicecloud.dev API Key from your app settings"
+      is_expand: true
+      is_required: true
+      is_sensitive: true
+
+  - app_file: ""
+    opts:
+      title: "App File Path"
+      summary: "Path to the build artifact to upload"
+      is_expand: true
+      is_required: false
+
+  - app_binary_id: ""
+    opts:
+      title: "App Binary ID"
+      summary: "The app binary already uploaded to devicecloud.dev"
+      is_expand: true
+      is_required: false
+
+  - android_device: ""
+    opts:
+      title: "Android Device"
+      summary: "Android device to run your flow against"
+      is_expand: true
+      is_required: false
+      value_options:
+        - "pixel-6"
+        - "pixel-6a"
+        - "pixel-6-pro"
+        - "pixel-7"
+        - "pixel-7-pro"
+        - "generic-tablet"
+
+  - ios_device: ""
+    opts:
+      title: "iOS Device"
+      summary: "iOS device to run your flow against"
+      is_expand: true
+      is_required: false
+      value_options:
+        - "iphone-12"
+        - "iphone-12-mini"
+        - "iphone-12-pro-max"
+        - "iphone-13"
+        - "iphone-13-mini"
+        - "iphone-13-pro-max"
+        - "iphone-14"
+        - "iphone-14-plus"
+        - "iphone-14-pro"
+        - "iphone-14-pro-max"
+        - "iphone-15"
+        - "iphone-15-plus"
+        - "iphone-15-pro"
+        - "iphone-15-pro-max"
+        - "ipad-pro-6th-gen"
+
+  - workspace: ""
+    opts:
+      title: "Workspace Folder"
+      summary: "Path to the workspace folder containing Maestro flows"
+      is_expand: true
+      is_required: false
+
+  - env: ""
+    opts:
+      title: "Environment Variables"
+      summary: "List of environment variables to pass to the test"
+      is_expand: true
+      is_required: false
+
+  - async: "false"
+    opts:
+      title: "Async Execution"
+      summary: "Run tests asynchronously"
+      is_expand: true
+      is_required: false
+      value_options:
+        - "true"
+        - "false"
+
+  - android_api_level: ""
+    opts:
+      title: "Android API Level"
+      summary: "Android API level to use for testing"
+      is_expand: true
+      is_required: false
+
+  - ios_version: ""
+    opts:
+      title: "iOS Version"
+      summary: "iOS version to use for testing"
+      is_expand: true
+      is_required: false
+
+  - include_tags: ""
+    opts:
+      title: "Include Tags"
+      summary: "Comma-separated list of tags to include in test execution"
+      is_expand: true
+      is_required: false
+
+  - exclude_tags: ""
+    opts:
+      title: "Exclude Tags"
+      summary: "Comma-separated list of tags to exclude from test execution"
+      is_expand: true
+      is_required: false
+
+  - exclude_flows: ""
+    opts:
+      title: "Exclude Flows"
+      summary: "Flows to exclude from test execution"
+      is_expand: true
+      is_required: false
+
+  - google_play: "false"
+    opts:
+      title: "Google Play"
+      summary: "Whether to use Google Play services"
+      is_expand: true
+      is_required: false
+      value_options:
+        - "true"
+        - "false"
+
+  - name: ""
+    opts:
+      title: "Test Run Name"
+      summary: "Custom name for the test run"
+      is_expand: true
+      is_required: false
+
+  - additional_app_binary_ids: ""
+    opts:
+      title: "Additional App Binary IDs"
+      summary: "Comma-separated list of additional app binary IDs"
+      is_expand: true
+      is_required: false
+
+  - additional_app_files: ""
+    opts:
+      title: "Additional App Files"
+      summary: "Comma-separated list of additional app file paths"
+      is_expand: true
+      is_required: false
+
+  - device_locale: ""
+    opts:
+      title: "Device Locale"
+      summary: "Locale to use on the device"
+      is_expand: true
+      is_required: false
+
+  - download_artifacts: ""
+    opts:
+      title: "Download Artifacts"
+      summary: "Which artifacts to download (ALL or FAILED)"
+      is_expand: true
+      is_required: false
+      value_options:
+        - "ALL"
+        - "FAILED"
+
+  - maestro_version: ""
+    opts:
+      title: "Maestro Version"
+      summary: "Specific version of Maestro to use"
+      is_expand: true
+      is_required: false
+
+  - orientation: ""
+    opts:
+      title: "Device Orientation"
+      summary: "Device orientation in degrees"
+      is_expand: true
+      is_required: false
+      value_options:
+        - "0"
+        - "90"
+        - "180"
+        - "270"
+
+  - retry: ""
+    opts:
+      title: "Retry Count"
+      summary: "Number of times to retry failed tests"
+      is_expand: true
+      is_required: false
+
+outputs:
+  - DEVICECLOUD_TEST_RESULTS:
+    opts:
+      title: "Test Results URL"
+      summary: "URL to view the test results on devicecloud.dev"

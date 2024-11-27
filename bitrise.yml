@@ -5,7 +5,7 @@ app:
   envs:
     # If you want to share this step into a StepLib
     - BITRISE_STEP_ID: device-cloud-for-maestro
-    - BITRISE_STEP_VERSION: "1.5.0"
+    - BITRISE_STEP_VERSION: "0.0.1"
     - BITRISE_STEP_GIT_CLONE_URL: https://github.com/devicecloud-dev/bitrise-integration.git
     - MY_STEPLIB_REPO_FORK_GIT_URL: git@github.com:devicecloud-dev/bitrise-integration.git
 
@@ -38,9 +38,9 @@ workflows:
             file if you would not specify another value.
           run_if: true
           inputs:
-            - api_key: "DEVICECLOUD_API_KEY"
-            - app_file: "/.maestro/sample.apk"
-            - workspace: "./.maestro"
+            - api_key: "$DEVICECLOUD_API_KEY"
+            - app_file: "../.maestro/sample.apk"
+            - workspace: "../.maestro"
             - android_device: "pixel-6"
             - android_api_level: "33"
             - name: "My BitRise Test Run"

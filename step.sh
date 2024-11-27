@@ -3,10 +3,13 @@
 # Parse env variables
 env_list=""
 if [ -n "$env" ]; then
-    # Replace '\n' with ' -e '
-    envs="${env//\\n/ -e }"
-    # Prefix the whole string with '-e '
-    env_list="-e $envs"
+    # Convert Bitrise key-value format to -e KEY=VALUE format
+    while IFS='|' read -r key value || [ -n "$key" ]; do
+        if [ -n "$key" ]; then
+            # Append each env var with -e prefix
+            env_list="$env_list -e $key=$value"
+        fi
+    done <<< "$env"
 fi
 
 # Refine variables
@@ -45,6 +48,29 @@ echo "workspace: $workspace"
 echo "env_list: $env_list"
 echo "is_async: $is_async"
 
+
+echo "Running command: npx --yes @devicecloud.dev/dcd cloud --quiet \
+--apiKey \"$api_key\" \
+${api_url:+--api-url \"$api_url\"} \
+${app_binary_id:+--app-binary-id \"$app_binary_id\"} \
+${additional_app_binary_ids:+--additional-app-binary-ids \"$additional_app_binary_ids\"} \
+${additional_app_files:+--additional-app-files \"$additional_app_files\"} \
+${android_api_level:+--android-api-level \"$android_api_level\"} \
+${android_device:+--android-device \"$android_device\"} \
+${is_async:+--async} \
+${device_locale:+--device-locale \"$device_locale\"} \
+${download_artifacts:+--download-artifacts} \
+${exclude_flows:+--exclude-flows \"$exclude_flows\"} \
+${exclude_tags:+--exclude-tags \"$exclude_tags\"} \
+${is_google_play:+--google-play} \
+${include_tags:+--include-tags \"$include_tags\"} \
+${ios_version:+--ios-version \"$ios_version\"} \
+${ios_device:+--ios-device \"$ios_device\"} \
+${name:+--name \"$name\"} \
+${orientation:+--orientation \"$orientation\"} \
+${retry:+--retry \"$retry\"} \
+${env:+ $env} \
+\"$app_file\" \"$workspace\""
 
 npx --yes @devicecloud.dev/dcd cloud --quiet \
 --apiKey "$api_key" \

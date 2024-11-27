@@ -1,15 +1,15 @@
 #!/bin/sh
 
 # Parse env variables
-env_list=""
-if [ -n "$env" ]; then
-    # Convert Bitrise key-value format to -e KEY=VALUE format
-    while IFS='|' read -r key value || [ -n "$key" ]; do
+env_list_parsed=""
+if [ -n "$env_list" ]; then
+    # Convert newline-separated key-value pairs to -e KEY=VALUE format
+    while IFS='=' read -r key value; do
         if [ -n "$key" ]; then
             # Append each env var with -e prefix
-            env_list="$env_list -e $key=$value"
+            env_list_parsed="$env_list_parsed -e $key=$value"
         fi
-    done <<< "$env"
+    done <<< "$env_list"
 fi
 
 # Refine variables
@@ -22,31 +22,30 @@ cd $BITRISE_SOURCE_DIR
 EXIT_CODE=0
 
 # Log all variables for debugging
-echo "Environment variables:"
-echo "api_key: $api_key"
-echo "api_url: $api_url"
-echo "app_binary_id: $app_binary_id" 
+echo "DCD variables:"
 echo "additional_app_binary_ids: $additional_app_binary_ids"
 echo "additional_app_files: $additional_app_files"
 echo "android_api_level: $android_api_level"
 echo "android_device: $android_device"
+echo "api_key: $api_key"
+echo "api_url: $api_url"
+echo "app_binary_id: $app_binary_id"
+echo "app_file: $app_file"
 echo "async: $async"
 echo "device_locale: $device_locale"
 echo "download_artifacts: $download_artifacts"
+echo "env_list: $env_list"
 echo "exclude_flows: $exclude_flows"
 echo "exclude_tags: $exclude_tags"
 echo "google_play: $google_play"
 echo "include_tags: $include_tags"
-echo "ios_version: $ios_version"
 echo "ios_device: $ios_device"
+echo "ios_version: $ios_version"
+echo "is_async: $is_async"
 echo "name: $name"
 echo "orientation: $orientation"
 echo "retry: $retry"
-echo "env: $env"
-echo "app_file: $app_file"
 echo "workspace: $workspace"
-echo "env_list: $env_list"
-echo "is_async: $is_async"
 
 
 echo "Running command: npx --yes @devicecloud.dev/dcd cloud --quiet \
@@ -69,7 +68,7 @@ ${ios_device:+--ios-device \"$ios_device\"} \
 ${name:+--name \"$name\"} \
 ${orientation:+--orientation \"$orientation\"} \
 ${retry:+--retry \"$retry\"} \
-${env:+ $env} \
+${env_list_parsed} \
 \"$app_file\" \"$workspace\""
 
 npx --yes @devicecloud.dev/dcd cloud --quiet \
@@ -92,9 +91,26 @@ ${ios_device:+--ios-device "$ios_device"} \
 ${name:+--name "$name"} \
 ${orientation:+--orientation "$orientation"} \
 ${retry:+--retry "$retry"} \
-${env:+ $env} \
+${env_list_parsed} \
 "$app_file" "$workspace" || EXIT_CODE=$?
 
-# to do: handle download artifacts
+# Handle artifacts download
+if [ -n "$download_artifacts" ] && [ -f "artifacts.zip" ]; then
+    case "$download_artifacts" in
+        "ALL"|"FAILED")
+            echo "Extracting artifacts.zip (mode: $download_artifacts)..."
+            unzip -o artifacts.zip -d "$BITRISE_DEPLOY_DIR"
+            if [ $? -eq 0 ]; then
+                echo "Artifacts successfully extracted to $BITRISE_DEPLOY_DIR"
+            else
+                echo "Warning: Failed to extract artifacts.zip"
+                EXIT_CODE=1
+            fi
+            ;;
+        *)
+            echo "Warning: Invalid download_artifacts value: $download_artifacts. Expected 'ALL' or 'FAILED'"
+            ;;
+    esac
+fi
 
 exit $EXIT_CODE

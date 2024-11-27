@@ -101,13 +101,12 @@ inputs:
       is_expand: true
       is_required: false
 
-  - env: ""
+  - env_list: ""
     opts:
       title: "Environment Variables"
-      summary: "List of environment variables to pass to the test"
+      summary: "List of environment variables to pass to the test seperated by newlines (e.g. MY_VAR=my_value <newline> MY_OTHER_VAR=other_value)"
       is_expand: true
       is_required: false
-      category: keyvalue
 
   - async: "false"
     opts:

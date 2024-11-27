@@ -11,8 +11,7 @@ fi
 
 # Refine variables
 [[ "$async" == "true" ]] && is_async="true"
-
-set -ex
+[[ "$google_play" == "true" ]] && is_google_play="true"
 
 # Change to source directory
 cd $BITRISE_SOURCE_DIR
@@ -21,7 +20,6 @@ EXIT_CODE=0
 
 # Log all variables for debugging
 echo "Environment variables:"
-# echo "api_key: [MASKED]"
 echo "api_key: $api_key"
 echo "api_url: $api_url"
 echo "app_binary_id: $app_binary_id" 
@@ -61,7 +59,7 @@ ${device_locale:+--device-locale "$device_locale"} \
 ${download_artifacts:+--download-artifacts} \
 ${exclude_flows:+--exclude-flows "$exclude_flows"} \
 ${exclude_tags:+--exclude-tags "$exclude_tags"} \
-${google_play:+--google-play} \
+${is_google_play:+--google-play} \
 ${include_tags:+--include-tags "$include_tags"} \
 ${ios_version:+--ios-version "$ios_version"} \
 ${ios_device:+--ios-device "$ios_device"} \

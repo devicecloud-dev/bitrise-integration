@@ -1,11 +1,12 @@
 format_version: "11"
 default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
+issue_tracker_url: https://discord.gg/gm3mJwcNw8
 
 app:
   envs:
     # If you want to share this step into a StepLib
     - BITRISE_STEP_ID: device-cloud-for-maestro
-    - BITRISE_STEP_VERSION: "0.0.4"
+    - BITRISE_STEP_VERSION: "0.0.5"
     - BITRISE_STEP_GIT_CLONE_URL: https://github.com/devicecloud-dev/bitrise-integration.git
     - MY_STEPLIB_REPO_FORK_GIT_URL: git@github.com:devicecloud-dev/bitrise-integration.git
 

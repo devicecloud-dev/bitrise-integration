@@ -81,7 +81,7 @@ ${android_api_level:+--android-api-level "$android_api_level"} \
 ${android_device:+--android-device "$android_device"} \
 ${is_async:+--async} \
 ${device_locale:+--device-locale "$device_locale"} \
-${download_artifacts:+--download-artifacts} \
+${download_artifacts:+--download-artifacts "$download_artifacts"} \
 ${exclude_flows:+--exclude-flows "$exclude_flows"} \
 ${exclude_tags:+--exclude-tags "$exclude_tags"} \
 ${is_google_play:+--google-play} \

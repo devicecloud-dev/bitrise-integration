@@ -200,5 +200,44 @@ inputs:
       is_expand: true
       is_required: false
 
+  - x86_arch: "false"
+    opts:
+      title: "x86 Architecture"
+      summary: "Whether to use x86 architecture for Android emulation"
+      is_expand: true
+      is_required: false
+      default_value: "false"
+      value_options:
+        - "true"
+        - "false"
+
+  - report: ""
+    opts:
+      title: "Report Format"
+      summary: "Generate a report in the specified format"
+      is_expand: true
+      is_required: false
+      value_options:
+        - ""
+        - "junit"
+        - "html"
+
+  - ignore_sha_check: "false"
+    opts:
+      title: "Ignore SHA Check"
+      summary: "Ignore the SHA hash check and upload the binary regardless of whether it already exists (not recommended)"
+      is_expand: true
+      is_required: false
+      default_value: "false"
+      value_options:
+        - "true"
+        - "false"
+
+  - api_url: ""
+    opts:
+      title: "API URL"
+      summary: "Custom API URL for devicecloud.dev (optional)"
+      is_expand: true
+      is_required: false
 
 # TODO: Add output URL

@@ -15,7 +15,8 @@ fi
 # Refine variables
 [[ "$async" == "true" ]] && is_async="true"
 [[ "$google_play" == "true" ]] && is_google_play="true"
-
+[[ "$x86_arch" == "true" ]] && is_x86_arch="true"
+[[ "$ignore_sha_check" == "true" ]] && is_ignore_sha_check="true"
 # Change to source directory
 cd $BITRISE_SOURCE_DIR
 
@@ -42,10 +43,13 @@ echo "include_tags: $include_tags"
 echo "ios_device: $ios_device"
 echo "ios_version: $ios_version"
 echo "is_async: $is_async"
+echo "maestro_version: $maestro_version"
 echo "name: $name"
 echo "orientation: $orientation"
 echo "retry: $retry"
 echo "workspace: $workspace"
+echo "report: $report"
+echo "ignore_sha_check: $ignore_sha_check"
 
 
 echo "Running command: npx --yes @devicecloud.dev/dcd cloud --quiet \
@@ -68,7 +72,10 @@ ${ios_device:+--ios-device \"$ios_device\"} \
 ${name:+--name \"$name\"} \
 ${orientation:+--orientation \"$orientation\"} \
 ${retry:+--retry \"$retry\"} \
+${maestro_version:+--maestro-version \"$maestro_version\"} \
 ${env_list_parsed} \
+${report:+--report "$report"} \
+${is_ignore_sha_check:+--ignore-sha-check} \
 \"$app_file\" \"$workspace\""
 
 npx --yes @devicecloud.dev/dcd cloud --quiet \
@@ -80,6 +87,7 @@ ${additional_app_files:+--additional-app-files "$additional_app_files"} \
 ${android_api_level:+--android-api-level "$android_api_level"} \
 ${android_device:+--android-device "$android_device"} \
 ${is_async:+--async} \
+${is_x86_arch:+--x86-arch} \
 ${device_locale:+--device-locale "$device_locale"} \
 ${download_artifacts:+--download-artifacts "$download_artifacts"} \
 ${exclude_flows:+--exclude-flows "$exclude_flows"} \
@@ -91,7 +99,10 @@ ${ios_device:+--ios-device "$ios_device"} \
 ${name:+--name "$name"} \
 ${orientation:+--orientation "$orientation"} \
 ${retry:+--retry "$retry"} \
+${maestro_version:+--maestro-version "$maestro_version"} \
 ${env_list_parsed} \
+${report:+--report "$report"} \
+${is_ignore_sha_check:+--ignore-sha-check} \
 "$app_file" "$workspace" || EXIT_CODE=$?
 
 # Handle artifacts download

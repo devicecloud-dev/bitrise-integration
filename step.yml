@@ -212,7 +212,7 @@ inputs:
         - "true"
         - "false"
 
-  - report: ""
+  - report: "junit"
     opts:
       title: "Report Format"
       summary: "Generate a report in the specified format"

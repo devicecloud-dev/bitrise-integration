@@ -4,6 +4,7 @@ description: "Executes Maestro mobile tests on devicecloud.dev with configurable
 website: "https://devicecloud.dev"
 source_code_url: "https://github.com/devicecloud-dev/bitrise-integration"
 issue_tracker_url: "https://github.com/orgs/devicecloud-dev/discussions"
+
 host_os_tags:
   - osx-10.10
   - ubuntu-16.04
@@ -217,8 +218,8 @@ inputs:
       summary: "Generate a report in the specified format"
       is_expand: true
       is_required: false
+      default_value: "junit"
       value_options:
-        - ""
         - "junit"
         - "html"
 
@@ -239,5 +240,4 @@ inputs:
       summary: "Custom API URL for devicecloud.dev (optional)"
       is_expand: true
       is_required: false
-
 # TODO: Add output URL

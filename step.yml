@@ -218,8 +218,8 @@ inputs:
       summary: "Generate a report in the specified format"
       is_expand: true
       is_required: false
+      default_value: "junit"
       value_options:
-        - ""
         - "junit"
         - "html"
 

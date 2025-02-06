@@ -81,71 +81,64 @@ ${report:+--report "$report"} \
 ${is_ignore_sha_check:+--ignore-sha-check} \
 \"$app_file\" \"$workspace\""
 
-# Capture the command output while also displaying it
-if [ -t 1 ]; then
-    echo "Using terminal output method (tee)"
-    OUTPUT=$(npx --yes "$DCD_VERSION" cloud --quiet \
-    --apiKey "$api_key" \
-    ${api_url:+--api-url "$api_url"} \
-    ${app_binary_id:+--app-binary-id "$app_binary_id"} \
-    ${additional_app_binary_ids:+--additional-app-binary-ids "$additional_app_binary_ids"} \
-    ${additional_app_files:+--additional-app-files "$additional_app_files"} \
-    ${android_api_level:+--android-api-level "$android_api_level"} \
-    ${android_device:+--android-device "$android_device"} \
-    ${is_async:+--async} \
-    ${is_x86_arch:+--x86-arch} \
-    ${device_locale:+--device-locale "$device_locale"} \
-    ${download_artifacts:+--download-artifacts "$download_artifacts"} \
-    ${exclude_flows:+--exclude-flows "$exclude_flows"} \
-    ${exclude_tags:+--exclude-tags "$exclude_tags"} \
-    ${is_google_play:+--google-play} \
-    ${include_tags:+--include-tags "$include_tags"} \
-    ${ios_version:+--ios-version "$ios_version"} \
-    ${ios_device:+--ios-device "$ios_device"} \
-    ${name:+--name "$name"} \
-    ${orientation:+--orientation "$orientation"} \
-    ${retry:+--retry "$retry"} \
-    ${maestro_version:+--maestro-version "$maestro_version"} \
-    ${env_list_parsed} \
-    ${report:+--report "$report"} \
-    ${is_ignore_sha_check:+--ignore-sha-check} \
-    "$app_file" "$workspace" 2>&1 | tee /dev/fd/2) || EXIT_CODE=$?
-else
-    echo "Using non-terminal output method (capture and echo)"
-    OUTPUT=$(npx --yes "$DCD_VERSION" cloud --quiet \
-    --apiKey "$api_key" \
-    ${api_url:+--api-url "$api_url"} \
-    ${app_binary_id:+--app-binary-id "$app_binary_id"} \
-    ${additional_app_binary_ids:+--additional-app-binary-ids "$additional_app_binary_ids"} \
-    ${additional_app_files:+--additional-app-files "$additional_app_files"} \
-    ${android_api_level:+--android-api-level "$android_api_level"} \
-    ${android_device:+--android-device "$android_device"} \
-    ${is_async:+--async} \
-    ${device_locale:+--device-locale "$device_locale"} \
-    ${download_artifacts:+--download-artifacts "$download_artifacts"} \
-    ${exclude_flows:+--exclude-flows "$exclude_flows"} \
-    ${exclude_tags:+--exclude-tags "$exclude_tags"} \
-    ${is_google_play:+--google-play} \
-    ${include_tags:+--include-tags "$include_tags"} \
-    ${ios_version:+--ios-version "$ios_version"} \
-    ${ios_device:+--ios-device "$ios_device"} \
-    ${name:+--name "$name"} \
-    ${orientation:+--orientation "$orientation"} \
-    ${retry:+--retry "$retry"} \
-    ${maestro_version:+--maestro-version "$maestro_version"} \
-    ${env_list_parsed} \
-    ${report:+--report "$report"} \
-    ${is_ignore_sha_check:+--ignore-sha-check} \
-    "$app_file" "$workspace" 2>&1) || EXIT_CODE=$?
-    echo "$OUTPUT"
-fi
+# Capture the command output and display it
+echo "Using non-terminal output method (capture and echo)"
+OUTPUT=$(npx --yes "$DCD_VERSION" cloud --quiet \
+--apiKey "$api_key" \
+${api_url:+--api-url "$api_url"} \
+${app_binary_id:+--app-binary-id "$app_binary_id"} \
+${additional_app_binary_ids:+--additional-app-binary-ids "$additional_app_binary_ids"} \
+${additional_app_files:+--additional-app-files "$additional_app_files"} \
+${android_api_level:+--android-api-level "$android_api_level"} \
+${android_device:+--android-device "$android_device"} \
+${is_async:+--async} \
+${device_locale:+--device-locale "$device_locale"} \
+${download_artifacts:+--download-artifacts "$download_artifacts"} \
+${exclude_flows:+--exclude-flows "$exclude_flows"} \
+${exclude_tags:+--exclude-tags "$exclude_tags"} \
+${is_google_play:+--google-play} \
+${include_tags:+--include-tags "$include_tags"} \
+${ios_version:+--ios-version "$ios_version"} \
+${ios_device:+--ios-device "$ios_device"} \
+${name:+--name "$name"} \
+${orientation:+--orientation "$orientation"} \
+${retry:+--retry "$retry"} \
+${maestro_version:+--maestro-version "$maestro_version"} \
+${env_list_parsed} \
+${report:+--report "$report"} \
+${is_ignore_sha_check:+--ignore-sha-check} \
+"$app_file" "$workspace" 2>&1) || EXIT_CODE=$?
+echo "$OUTPUT"
 
 # Extract upload ID from console URL
 UPLOAD_ID=$(echo "$OUTPUT" | grep -o 'https://console\.devicecloud\.dev/results?upload=[a-zA-Z0-9-]*' | cut -d= -f2)
 
 if [ -n "$UPLOAD_ID" ]; then
-    # Get test status using the status command
-    STATUS_OUTPUT=$(npx --yes "$DCD_VERSION" status --json --upload-id "$UPLOAD_ID" --api-key "$api_key" ${api_url:+--api-url "$api_url"})
+    # Get test status using the status command with retries
+    MAX_RETRIES=5
+    RETRY_COUNT=0
+    RETRY_DELAY=5
+    
+    while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+        echo "Fetching test status (attempt $((RETRY_COUNT + 1))/$MAX_RETRIES)..."
+        STATUS_OUTPUT=$(npx --yes "$DCD_VERSION" status --json --upload-id "$UPLOAD_ID" --api-key "$api_key" ${api_url:+--api-url "$api_url"})
+        
+        if [ $? -eq 0 ] && [ -n "$STATUS_OUTPUT" ]; then
+            # Status command succeeded and returned output
+            break
+        fi
+        
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+            echo "Status not available yet, waiting ${RETRY_DELAY} seconds..."
+            sleep $RETRY_DELAY
+        fi
+    done
+    
+    if [ -z "$STATUS_OUTPUT" ]; then
+        echo "Error: Failed to get test status after $MAX_RETRIES attempts"
+        exit 1
+    fi
     
     # Extract values from status JSON using grep and sed
     # Console URL

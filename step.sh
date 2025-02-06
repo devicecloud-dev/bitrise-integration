@@ -82,7 +82,8 @@ ${is_ignore_sha_check:+--ignore-sha-check} \
 \"$app_file\" \"$workspace\""
 
 # Capture the command output and display it
-echo "Using non-terminal output method (capture and echo)"
+echo "Waiting for full test results so we can parse outputs... this may take a while for non-async tests"
+echo "Check status at https://console.devicecloud.dev/results"
 OUTPUT=$(npx --yes "$DCD_VERSION" cloud --quiet \
 --apiKey "$api_key" \
 ${api_url:+--api-url "$api_url"} \

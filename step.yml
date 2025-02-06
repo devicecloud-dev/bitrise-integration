@@ -240,4 +240,13 @@ inputs:
       summary: "Custom API URL for devicecloud.dev (optional)"
       is_expand: true
       is_required: false
-# TODO: Add output URL
+
+outputs:
+  DEVICE_CLOUD_CONSOLE_URL:
+    description: 'URL to view the test results in the Device Cloud console'
+  DEVICE_CLOUD_FLOW_RESULTS:
+    description: 'JSON array containing results for each flow, including name, status, and any errors'
+  DEVICE_CLOUD_UPLOAD_STATUS:
+    description: 'Status of the test run (PENDING, RUNNING, PASSED, FAILED, CANCELLED)'
+  DEVICE_CLOUD_APP_BINARY_ID:
+    description: 'ID of the uploaded app binary in Device Cloud'

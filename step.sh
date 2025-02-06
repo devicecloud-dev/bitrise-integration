@@ -12,6 +12,9 @@ if [ -n "$env_list" ]; then
     done <<< "$env_list"
 fi
 
+# Define minimum DCD version
+DCD_VERSION="@devicecloud.dev/dcd@>=3.3.6"
+
 # Refine variables
 [[ "$async" == "true" ]] && is_async="true"
 [[ "$google_play" == "true" ]] && is_google_play="true"
@@ -52,7 +55,7 @@ echo "report: $report"
 echo "ignore_sha_check: $ignore_sha_check"
 
 
-echo "Running command: npx --yes @devicecloud.dev/dcd cloud --quiet \
+echo "Running command: npx --yes \"$DCD_VERSION\" cloud --quiet \
 --apiKey \"$api_key\" \
 ${api_url:+--api-url \"$api_url\"} \
 ${app_binary_id:+--app-binary-id \"$app_binary_id\"} \
@@ -78,7 +81,8 @@ ${report:+--report "$report"} \
 ${is_ignore_sha_check:+--ignore-sha-check} \
 \"$app_file\" \"$workspace\""
 
-npx --yes @devicecloud.dev/dcd cloud --quiet \
+# Capture the command output while also displaying it
+OUTPUT=$(npx --yes "$DCD_VERSION" cloud --quiet \
 --apiKey "$api_key" \
 ${api_url:+--api-url "$api_url"} \
 ${app_binary_id:+--app-binary-id "$app_binary_id"} \
@@ -103,7 +107,41 @@ ${maestro_version:+--maestro-version "$maestro_version"} \
 ${env_list_parsed} \
 ${report:+--report "$report"} \
 ${is_ignore_sha_check:+--ignore-sha-check} \
-"$app_file" "$workspace" || EXIT_CODE=$?
+"$app_file" "$workspace" 2>&1 | tee /dev/tty) || EXIT_CODE=$?
+
+# Extract upload ID from console URL
+UPLOAD_ID=$(echo "$OUTPUT" | grep -o 'https://console\.devicecloud\.dev/results?upload=[a-zA-Z0-9-]*' | cut -d= -f2)
+
+if [ -n "$UPLOAD_ID" ]; then
+    # Get test status using the status command
+    STATUS_OUTPUT=$(npx --yes "$DCD_VERSION" status --json --upload-id "$UPLOAD_ID" --api-key "$api_key" ${api_url:+--api-url "$api_url"})
+    
+    # Extract values from status JSON using grep and sed
+    # Console URL
+    CONSOLE_URL=$(echo "$OUTPUT" | grep -o 'https://console\.devicecloud\.dev/results?upload=[a-zA-Z0-9-]*')
+    envman add --key DEVICE_CLOUD_CONSOLE_URL --value "$CONSOLE_URL"
+    
+    # Status
+    TEST_STATUS=$(echo "$STATUS_OUTPUT" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+    envman add --key DEVICE_CLOUD_UPLOAD_STATUS --value "$TEST_STATUS"
+    
+    # Flow Results
+    FLOW_RESULTS=$(echo "$STATUS_OUTPUT" | grep -o '"tests":\[[^]]*\]')
+    envman add --key DEVICE_CLOUD_FLOW_RESULTS --value "$FLOW_RESULTS"
+    
+    # App Binary ID
+    APP_BINARY_ID=$(echo "$STATUS_OUTPUT" | grep -o '"appBinaryId":"[^"]*"' | cut -d'"' -f4)
+    if [ -n "$APP_BINARY_ID" ]; then
+        envman add --key DEVICE_CLOUD_APP_BINARY_ID --value "$APP_BINARY_ID"
+    fi
+    
+    # Set exit code based on status
+    if [ "$TEST_STATUS" = "FAILED" ]; then
+        EXIT_CODE=1
+    elif [ "$TEST_STATUS" = "PASSED" ]; then
+        EXIT_CODE=0
+    fi
+fi
 
 # Handle artifacts download
 if [ -n "$download_artifacts" ] && [ -f "artifacts.zip" ]; then

@@ -82,32 +82,63 @@ ${is_ignore_sha_check:+--ignore-sha-check} \
 \"$app_file\" \"$workspace\""
 
 # Capture the command output while also displaying it
-OUTPUT=$(npx --yes "$DCD_VERSION" cloud --quiet \
---apiKey "$api_key" \
-${api_url:+--api-url "$api_url"} \
-${app_binary_id:+--app-binary-id "$app_binary_id"} \
-${additional_app_binary_ids:+--additional-app-binary-ids "$additional_app_binary_ids"} \
-${additional_app_files:+--additional-app-files "$additional_app_files"} \
-${android_api_level:+--android-api-level "$android_api_level"} \
-${android_device:+--android-device "$android_device"} \
-${is_async:+--async} \
-${is_x86_arch:+--x86-arch} \
-${device_locale:+--device-locale "$device_locale"} \
-${download_artifacts:+--download-artifacts "$download_artifacts"} \
-${exclude_flows:+--exclude-flows "$exclude_flows"} \
-${exclude_tags:+--exclude-tags "$exclude_tags"} \
-${is_google_play:+--google-play} \
-${include_tags:+--include-tags "$include_tags"} \
-${ios_version:+--ios-version "$ios_version"} \
-${ios_device:+--ios-device "$ios_device"} \
-${name:+--name "$name"} \
-${orientation:+--orientation "$orientation"} \
-${retry:+--retry "$retry"} \
-${maestro_version:+--maestro-version "$maestro_version"} \
-${env_list_parsed} \
-${report:+--report "$report"} \
-${is_ignore_sha_check:+--ignore-sha-check} \
-"$app_file" "$workspace" 2>&1 | tee /dev/tty) || EXIT_CODE=$?
+if [ -t 1 ]; then
+    echo "Using terminal output method (tee)"
+    OUTPUT=$(npx --yes "$DCD_VERSION" cloud --quiet \
+    --apiKey "$api_key" \
+    ${api_url:+--api-url "$api_url"} \
+    ${app_binary_id:+--app-binary-id "$app_binary_id"} \
+    ${additional_app_binary_ids:+--additional-app-binary-ids "$additional_app_binary_ids"} \
+    ${additional_app_files:+--additional-app-files "$additional_app_files"} \
+    ${android_api_level:+--android-api-level "$android_api_level"} \
+    ${android_device:+--android-device "$android_device"} \
+    ${is_async:+--async} \
+    ${is_x86_arch:+--x86-arch} \
+    ${device_locale:+--device-locale "$device_locale"} \
+    ${download_artifacts:+--download-artifacts "$download_artifacts"} \
+    ${exclude_flows:+--exclude-flows "$exclude_flows"} \
+    ${exclude_tags:+--exclude-tags "$exclude_tags"} \
+    ${is_google_play:+--google-play} \
+    ${include_tags:+--include-tags "$include_tags"} \
+    ${ios_version:+--ios-version "$ios_version"} \
+    ${ios_device:+--ios-device "$ios_device"} \
+    ${name:+--name "$name"} \
+    ${orientation:+--orientation "$orientation"} \
+    ${retry:+--retry "$retry"} \
+    ${maestro_version:+--maestro-version "$maestro_version"} \
+    ${env_list_parsed} \
+    ${report:+--report "$report"} \
+    ${is_ignore_sha_check:+--ignore-sha-check} \
+    "$app_file" "$workspace" 2>&1 | tee /dev/fd/2) || EXIT_CODE=$?
+else
+    echo "Using non-terminal output method (capture and echo)"
+    OUTPUT=$(npx --yes "$DCD_VERSION" cloud --quiet \
+    --apiKey "$api_key" \
+    ${api_url:+--api-url "$api_url"} \
+    ${app_binary_id:+--app-binary-id "$app_binary_id"} \
+    ${additional_app_binary_ids:+--additional-app-binary-ids "$additional_app_binary_ids"} \
+    ${additional_app_files:+--additional-app-files "$additional_app_files"} \
+    ${android_api_level:+--android-api-level "$android_api_level"} \
+    ${android_device:+--android-device "$android_device"} \
+    ${is_async:+--async} \
+    ${device_locale:+--device-locale "$device_locale"} \
+    ${download_artifacts:+--download-artifacts "$download_artifacts"} \
+    ${exclude_flows:+--exclude-flows "$exclude_flows"} \
+    ${exclude_tags:+--exclude-tags "$exclude_tags"} \
+    ${is_google_play:+--google-play} \
+    ${include_tags:+--include-tags "$include_tags"} \
+    ${ios_version:+--ios-version "$ios_version"} \
+    ${ios_device:+--ios-device "$ios_device"} \
+    ${name:+--name "$name"} \
+    ${orientation:+--orientation "$orientation"} \
+    ${retry:+--retry "$retry"} \
+    ${maestro_version:+--maestro-version "$maestro_version"} \
+    ${env_list_parsed} \
+    ${report:+--report "$report"} \
+    ${is_ignore_sha_check:+--ignore-sha-check} \
+    "$app_file" "$workspace" 2>&1) || EXIT_CODE=$?
+    echo "$OUTPUT"
+fi
 
 # Extract upload ID from console URL
 UPLOAD_ID=$(echo "$OUTPUT" | grep -o 'https://console\.devicecloud\.dev/results?upload=[a-zA-Z0-9-]*' | cut -d= -f2)

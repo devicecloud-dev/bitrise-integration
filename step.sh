@@ -111,46 +111,11 @@ ${is_ignore_sha_check:+--ignore-sha-check} \
 echo "$OUTPUT"
 
 # Extract upload ID from console URL
-UPLOAD_ID=$(echo "$OUTPUT" | grep -o 'https://console\.devicecloud\.dev/results?upload=[a-zA-Z0-9-]*' | cut -d= -f2)
+UPLOAD_ID=$(echo "$OUTPUT" | grep -o 'upload=[a-zA-Z0-9-]*' | cut -d= -f2 | head -n1)
 
 if [ -n "$UPLOAD_ID" ]; then
-    # Get test status using the status command with retries
-    MAX_RETRIES=5
-    RETRY_COUNT=0
-    RETRY_DELAY=5
-    
-    while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-        echo "Fetching test status (attempt $((RETRY_COUNT + 1))/$MAX_RETRIES)..."
-        echo "Running command: npx --yes \"$DCD_VERSION\" status --json --upload-id \"$UPLOAD_ID\" --api-key \"$api_key\" ${api_url:+--api-url \"$api_url\"}"
-        STATUS_OUTPUT=$(npx --yes "$DCD_VERSION" status --json --upload-id "$UPLOAD_ID" --api-key "$api_key" ${api_url:+--api-url "$api_url"})
-        STATUS_CODE=$?
-        
-        echo "Status command exit code: $STATUS_CODE"
-        echo "Status command output: $STATUS_OUTPUT"
-        
-        if [ $STATUS_CODE -eq 0 ] && [ -n "$STATUS_OUTPUT" ]; then
-            echo "Status command succeeded with valid output"
-            break
-        else
-            if [ $STATUS_CODE -ne 0 ]; then
-                echo "Status command failed with exit code $STATUS_CODE"
-            fi
-            if [ -z "$STATUS_OUTPUT" ]; then
-                echo "Status command returned empty output"
-            fi
-        fi
-        
-        RETRY_COUNT=$((RETRY_COUNT + 1))
-        if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-            echo "Status not available yet, waiting ${RETRY_DELAY} seconds... ($RETRY_COUNT/$MAX_RETRIES attempts made)"
-            sleep $RETRY_DELAY
-        fi
-    done
-    
-    if [ -z "$STATUS_OUTPUT" ]; then
-        echo "Error: Failed to get test status after $MAX_RETRIES attempts"
-        exit 1
-    fi
+    # Get test status using the status command
+    STATUS_OUTPUT=$(npx --yes "$DCD_VERSION" status --json --upload-id "$UPLOAD_ID" --api-key "$api_key" ${api_url:+--api-url "$api_url"})
     
     # Extract values from status JSON using grep and sed
     # Console URL

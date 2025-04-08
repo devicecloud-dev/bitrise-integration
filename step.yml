@@ -3,7 +3,6 @@ summary: "Uses devicecloud.dev to execute Maestro mobile tests"
 description: "Executes Maestro mobile tests on devicecloud.dev with configurable parameters"
 website: "https://devicecloud.dev"
 source_code_url: "https://github.com/devicecloud-dev/bitrise-integration"
-issue_tracker_url: "https://github.com/orgs/devicecloud-dev/discussions"
 
 host_os_tags:
   - osx-10.10

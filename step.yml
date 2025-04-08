@@ -212,6 +212,24 @@ inputs:
         - "true"
         - "false"
 
+  - skip_chrome_onboarding: "false"
+    opts:
+      title: "Skip Chrome Onboarding"
+      summary: "[Android only] Skip Chrome browser onboarding screens when running tests"
+      is_expand: true
+      is_required: false
+      default_value: "false"
+      value_options:
+        - "true"
+        - "false"
+
+  - runner_type: ""
+    opts:
+      title: "Runner Type"
+      summary: "[experimental] The type of runner to use - note: anything other than default will incur premium pricing tiers"
+      is_expand: true
+      is_required: false
+
   - report: "junit"
     opts:
       title: "Report Format"

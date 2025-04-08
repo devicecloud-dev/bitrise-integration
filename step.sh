@@ -20,6 +20,7 @@ DCD_VERSION="@devicecloud.dev/dcd@>=3.3.6"
 [[ "$google_play" == "true" ]] && is_google_play="true"
 [[ "$x86_arch" == "true" ]] && is_x86_arch="true"
 [[ "$ignore_sha_check" == "true" ]] && is_ignore_sha_check="true"
+[[ "$skip_chrome_onboarding" == "true" ]] && is_skip_chrome_onboarding="true"
 # Change to source directory
 cd $BITRISE_SOURCE_DIR
 
@@ -53,7 +54,8 @@ echo "retry: $retry"
 echo "workspace: $workspace"
 echo "report: $report"
 echo "ignore_sha_check: $ignore_sha_check"
-
+echo "skip_chrome_onboarding: $skip_chrome_onboarding"
+echo "runner_type: $runner_type"
 
 echo "Running command: npx --yes \"$DCD_VERSION\" cloud --quiet \
 --apiKey \"$api_key\" \
@@ -79,6 +81,8 @@ ${maestro_version:+--maestro-version \"$maestro_version\"} \
 ${env_list_parsed} \
 ${report:+--report "$report"} \
 ${is_ignore_sha_check:+--ignore-sha-check} \
+${is_skip_chrome_onboarding:+--skip-chrome-onboarding} \
+${runner_type:+--runner-type "$runner_type"} \
 \"$app_file\" \"$workspace\""
 
 # Capture the command output and display it
@@ -108,6 +112,8 @@ ${maestro_version:+--maestro-version "$maestro_version"} \
 ${env_list_parsed} \
 ${report:+--report "$report"} \
 ${is_ignore_sha_check:+--ignore-sha-check} \
+${is_skip_chrome_onboarding:+--skip-chrome-onboarding} \
+${runner_type:+--runner-type "$runner_type"} \
 "$app_file" "$workspace" 2>&1) || EXIT_CODE=$?
 echo "$OUTPUT"
 

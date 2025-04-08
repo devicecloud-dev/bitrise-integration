@@ -1,12 +1,11 @@
 format_version: "11"
 default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
-issue_tracker_url: https://discord.gg/gm3mJwcNw8
 
 app:
   envs:
     # If you want to share this step into a StepLib
     - BITRISE_STEP_ID: device-cloud-for-maestro
-    - BITRISE_STEP_VERSION: "0.0.9"
+    - BITRISE_STEP_VERSION: "0.0.10"
     - BITRISE_STEP_GIT_CLONE_URL: https://github.com/devicecloud-dev/bitrise-integration.git
     - MY_STEPLIB_REPO_FORK_GIT_URL: git@github.com:devicecloud-dev/bitrise-integration.git
 
@@ -26,7 +25,7 @@ workflows:
             files with just './some-file' in the step's code, which would
             work for testing the step from this directory directly
             but would break if the step is included in another `bitrise.yml`.
-          run_if: true
+          run_if: "true"
           inputs:
             - path: ./_tmp
             - is_create_path: true
@@ -37,7 +36,7 @@ workflows:
             you can overwrite it if you want to, just like we did below,
             but the step would use the default value specified in the `step.yml`
             file if you would not specify another value.
-          run_if: true
+          run_if: "true"
           inputs:
             - api_key: "$DEVICECLOUD_API_KEY"
             - app_file: "../.maestro/sample.apk"

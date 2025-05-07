@@ -258,6 +258,53 @@ inputs:
       is_expand: true
       is_required: false
 
+  - debug: "false"
+    opts:
+      title: "Debug Mode"
+      summary: "Enable detailed debug logging for troubleshooting issues"
+      is_expand: true
+      is_required: false
+      default_value: "false"
+      value_options:
+        - "true"
+        - "false"
+
+  - json: "false"
+    opts:
+      title: "JSON Output"
+      summary: "Output results in JSON format - note: will always provide exit code 0"
+      is_expand: true
+      is_required: false
+      default_value: "false"
+      value_options:
+        - "true"
+        - "false"
+
+  - json_file: "false"
+    opts:
+      title: "JSON File Output"
+      summary: "Write JSON output to a file with name <run_name>_dcd.json or <upload_id>_dcd.json if no name is provided"
+      is_expand: true
+      is_required: false
+      default_value: "false"
+      value_options:
+        - "true"
+        - "false"
+
+  - config: ""
+    opts:
+      title: "Config File"
+      summary: "Path to custom config.yaml file. If not provided, defaults to config.yaml in root flows folders."
+      is_expand: true
+      is_required: false
+
+  - artifacts_path: ""
+    opts:
+      title: "Artifacts Path"
+      summary: "Custom file path for downloaded artifacts (default: ./artifacts.zip)"
+      is_expand: true
+      is_required: false
+
 outputs:
   - DEVICE_CLOUD_CONSOLE_URL:
     opts:

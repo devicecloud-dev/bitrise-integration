@@ -21,6 +21,9 @@ DCD_VERSION="@devicecloud.dev/dcd@>=3.3.6"
 [[ "$x86_arch" == "true" ]] && is_x86_arch="true"
 [[ "$ignore_sha_check" == "true" ]] && is_ignore_sha_check="true"
 [[ "$skip_chrome_onboarding" == "true" ]] && is_skip_chrome_onboarding="true"
+[[ "$debug" == "true" ]] && is_debug="true"
+[[ "$json" == "true" ]] && is_json="true"
+[[ "$json_file" == "true" ]] && is_json_file="true"
 # Change to source directory
 cd $BITRISE_SOURCE_DIR
 
@@ -56,6 +59,11 @@ echo "report: $report"
 echo "ignore_sha_check: $ignore_sha_check"
 echo "skip_chrome_onboarding: $skip_chrome_onboarding"
 echo "runner_type: $runner_type"
+echo "is_debug: $is_debug"
+echo "is_json: $is_json"
+echo "is_json_file: $is_json_file"
+echo "config: $config"
+echo "artifacts_path: $artifacts_path"
 
 echo "Running command: npx --yes \"$DCD_VERSION\" cloud --quiet \
 --apiKey \"$api_key\" \
@@ -83,6 +91,11 @@ ${report:+--report "$report"} \
 ${is_ignore_sha_check:+--ignore-sha-check} \
 ${is_skip_chrome_onboarding:+--skip-chrome-onboarding} \
 ${runner_type:+--runner-type "$runner_type"} \
+${is_debug:+--debug} \
+${is_json:+--json} \
+${is_json_file:+--json-file} \
+${config:+--config "$config"} \
+${artifacts_path:+--artifacts-path "$artifacts_path"} \
 \"$app_file\" \"$workspace\""
 
 # Capture the command output and display it
@@ -114,6 +127,11 @@ ${report:+--report "$report"} \
 ${is_ignore_sha_check:+--ignore-sha-check} \
 ${is_skip_chrome_onboarding:+--skip-chrome-onboarding} \
 ${runner_type:+--runner-type "$runner_type"} \
+${is_debug:+--debug} \
+${is_json:+--json} \
+${is_json_file:+--json-file} \
+${config:+--config "$config"} \
+${artifacts_path:+--artifacts-path "$artifacts_path"} \
 "$app_file" "$workspace" 2>&1) || EXIT_CODE=$?
 echo "$OUTPUT"
 

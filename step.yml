@@ -83,14 +83,32 @@ inputs:
   - env_list: ""
     opts:
       title: "Environment Variables"
-      summary: "List of environment variables to pass to the test seperated by newlines (e.g. MY_VAR=my_value <newline> MY_OTHER_VAR=other_value)"
+      summary: "List of environment variables to pass to the test separated by newlines (e.g. MY_VAR=my_value <newline> MY_OTHER_VAR=other_value)"
+      is_expand: true
+      is_required: false
+
+  - metadata: ""
+    opts:
+      title: "Metadata"
+      summary: "Arbitrary key-value metadata to include with your test run, separated by newlines (format: key=value)"
       is_expand: true
       is_required: false
 
   - async: "false"
     opts:
       title: "Async Execution"
-      summary: "Run tests asynchronously"
+      summary: "Run tests asynchronously (exit immediately without waiting for results)"
+      is_expand: true
+      is_required: false
+      default_value: "false"
+      value_options:
+        - "true"
+        - "false"
+
+  - dry_run: "false"
+    opts:
+      title: "Dry Run"
+      summary: "Simulate the run without actually triggering the upload/test, useful for debugging workflow issues"
       is_expand: true
       is_required: false
       default_value: "false"
@@ -104,6 +122,17 @@ inputs:
       summary: "Android API level to use for testing"
       is_expand: true
       is_required: false
+
+  - android_no_snapshot: "false"
+    opts:
+      title: "Android No Snapshot"
+      summary: "[Android only] Force cold boot instead of using snapshot boot. Automatically enabled for API 35+ but can be used to force cold boot on older API levels."
+      is_expand: true
+      is_required: false
+      default_value: "false"
+      value_options:
+        - "true"
+        - "false"
 
   - ios_version: ""
     opts:
@@ -151,20 +180,6 @@ inputs:
       is_expand: true
       is_required: false
 
-  - additional_app_binary_ids: ""
-    opts:
-      title: "Additional App Binary IDs"
-      summary: "Comma-separated list of additional app binary IDs"
-      is_expand: true
-      is_required: false
-
-  - additional_app_files: ""
-    opts:
-      title: "Additional App Files"
-      summary: "Comma-separated list of additional app file paths"
-      is_expand: true
-      is_required: false
-
   - device_locale: ""
     opts:
       title: "Device Locale"
@@ -189,9 +204,34 @@ inputs:
   - orientation: ""
     opts:
       title: "Device Orientation"
-      summary: "Device orientation in degrees"
+      summary: "[Android only] Device orientation (0 = portrait, 90 = landscape)"
       is_expand: true
       is_required: false
+      value_options:
+        - "0"
+        - "90"
+
+  - show_crosshairs: "false"
+    opts:
+      title: "Show Crosshairs"
+      summary: "[Android only] Display crosshairs for screen interactions during test execution"
+      is_expand: true
+      is_required: false
+      default_value: "false"
+      value_options:
+        - "true"
+        - "false"
+
+  - maestro_chrome_onboarding: "false"
+    opts:
+      title: "Maestro Chrome Onboarding"
+      summary: "[Android only] Force Maestro-based Chrome onboarding - note: this will slow your tests but can fix browser related crashes"
+      is_expand: true
+      is_required: false
+      default_value: "false"
+      value_options:
+        - "true"
+        - "false"
 
   - retry: ""
     opts:
@@ -200,28 +240,6 @@ inputs:
       is_expand: true
       is_required: false
 
-  - x86_arch: "false"
-    opts:
-      title: "x86 Architecture"
-      summary: "Whether to use x86 architecture for Android emulation"
-      is_expand: true
-      is_required: false
-      default_value: "false"
-      value_options:
-        - "true"
-        - "false"
-
-  - skip_chrome_onboarding: "false"
-    opts:
-      title: "Skip Chrome Onboarding"
-      summary: "[Android only] Skip Chrome browser onboarding screens when running tests"
-      is_expand: true
-      is_required: false
-      default_value: "false"
-      value_options:
-        - "true"
-        - "false"
-
   - runner_type: ""
     opts:
       title: "Runner Type"
@@ -229,16 +247,37 @@ inputs:
       is_expand: true
       is_required: false
 
-  - report: "junit"
+  - report: ""
     opts:
       title: "Report Format"
-      summary: "Generate a report in the specified format"
+      summary: "Generate and download test reports in the specified format"
       is_expand: true
       is_required: false
-      default_value: "junit"
       value_options:
+        - "allure"
         - "junit"
         - "html"
+
+  - junit_path: ""
+    opts:
+      title: "JUnit Report Path"
+      summary: "Custom file path for downloaded JUnit report (requires report=junit, default: ./report.xml)"
+      is_expand: true
+      is_required: false
+
+  - allure_path: ""
+    opts:
+      title: "Allure Report Path"
+      summary: "Custom file path for downloaded Allure report (requires report=allure, default: ./report.html)"
+      is_expand: true
+      is_required: false
+
+  - html_path: ""
+    opts:
+      title: "HTML Report Path"
+      summary: "Custom file path for downloaded HTML report (requires report=html, default: ./report.html)"
+      is_expand: true
+      is_required: false
 
   - ignore_sha_check: "false"
     opts:
@@ -290,6 +329,13 @@ inputs:
       value_options:
         - "true"
         - "false"
+
+  - json_file_name: ""
+    opts:
+      title: "JSON File Name"
+      summary: "Custom name for the JSON file (can also include relative path). Requires json_file to be true."
+      is_expand: true
+      is_required: false
 
   - config: ""
     opts:

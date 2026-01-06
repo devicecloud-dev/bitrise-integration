@@ -207,9 +207,6 @@ inputs:
       summary: "[Android only] Device orientation (0 = portrait, 90 = landscape)"
       is_expand: true
       is_required: false
-      value_options:
-        - "0"
-        - "90"
 
   - show_crosshairs: "false"
     opts:
@@ -250,13 +247,9 @@ inputs:
   - report: ""
     opts:
       title: "Report Format"
-      summary: "Generate and download test reports in the specified format"
+      summary: "Generate and download test reports in the specified format (allure, junit, or html)"
       is_expand: true
       is_required: false
-      value_options:
-        - "allure"
-        - "junit"
-        - "html"
 
   - junit_path: ""
     opts:

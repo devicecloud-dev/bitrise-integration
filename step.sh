@@ -16,7 +16,7 @@ fi
 if [ "$use_beta" = "true" ]; then
     DCD_VERSION="@devicecloud.dev/dcd@beta"
 else
-    DCD_VERSION="@devicecloud.dev/dcd@>=4.2.5"
+    DCD_VERSION="@devicecloud.dev/dcd@>=4.4.0"
 fi
 
 # Parse metadata list (similar to env_list)

@@ -13,7 +13,11 @@ if [ -n "$env_list" ]; then
 fi
 
 # Define minimum DCD version
-DCD_VERSION="@devicecloud.dev/dcd@>=4.2.5"
+if [ "$use_beta" = "true" ]; then
+    DCD_VERSION="@devicecloud.dev/dcd@beta"
+else
+    DCD_VERSION="@devicecloud.dev/dcd@>=4.2.5"
+fi
 
 # Parse metadata list (similar to env_list)
 metadata_parsed=""
@@ -36,6 +40,8 @@ fi
 [[ "$json" == "true" ]] && is_json="true"
 [[ "$json_file" == "true" ]] && is_json_file="true"
 [[ "$dry_run" == "true" ]] && is_dry_run="true"
+[[ "$disable_animations" == "true" ]] && is_disable_animations="true"
+[[ "$quiet" == "true" ]] && is_quiet="true"
 # Change to source directory
 cd $BITRISE_SOURCE_DIR
 
@@ -80,6 +86,11 @@ echo "retry: $retry"
 echo "runner_type: $runner_type"
 echo "show_crosshairs: $show_crosshairs"
 echo "workspace: $workspace"
+echo "app_url: $app_url"
+echo "disable_animations: $disable_animations"
+echo "quiet: $quiet"
+echo "moropo_v1_api_key: $moropo_v1_api_key"
+echo "use_beta: $use_beta"
 
 echo "Running command: npx --yes \"$DCD_VERSION\" cloud --quiet \
 --apiKey \"$api_key\" \
@@ -116,6 +127,10 @@ ${report:+--report \"$report\"} \
 ${retry:+--retry \"$retry\"} \
 ${runner_type:+--runner-type \"$runner_type\"} \
 ${is_show_crosshairs:+--show-crosshairs} \
+${app_url:+--app-url \"$app_url\"} \
+${is_disable_animations:+--disable-animations} \
+${is_quiet:+--quiet} \
+${moropo_v1_api_key:+--moropo-v1-api-key \"$moropo_v1_api_key\"} \
 ${env_list_parsed} \
 ${metadata_parsed} \
 \"$app_file\" \"$workspace\""
@@ -158,6 +173,10 @@ ${report:+--report "$report"} \
 ${retry:+--retry "$retry"} \
 ${runner_type:+--runner-type "$runner_type"} \
 ${is_show_crosshairs:+--show-crosshairs} \
+${app_url:+--app-url "$app_url"} \
+${is_disable_animations:+--disable-animations} \
+${is_quiet:+--quiet} \
+${moropo_v1_api_key:+--moropo-v1-api-key "$moropo_v1_api_key"} \
 ${env_list_parsed} \
 ${metadata_parsed} \
 "$app_file" "$workspace" 2>&1) || EXIT_CODE=$?

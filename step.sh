@@ -89,7 +89,6 @@ echo "workspace: $workspace"
 echo "app_url: $app_url"
 echo "disable_animations: $disable_animations"
 echo "quiet: $quiet"
-echo "moropo_v1_api_key: $moropo_v1_api_key"
 echo "use_beta: $use_beta"
 
 echo "Running command: npx --yes \"$DCD_VERSION\" cloud --quiet \
@@ -130,7 +129,6 @@ ${is_show_crosshairs:+--show-crosshairs} \
 ${app_url:+--app-url \"$app_url\"} \
 ${is_disable_animations:+--disable-animations} \
 ${is_quiet:+--quiet} \
-${moropo_v1_api_key:+--moropo-v1-api-key \"$moropo_v1_api_key\"} \
 ${env_list_parsed} \
 ${metadata_parsed} \
 \"$app_file\" \"$workspace\""
@@ -176,7 +174,6 @@ ${is_show_crosshairs:+--show-crosshairs} \
 ${app_url:+--app-url "$app_url"} \
 ${is_disable_animations:+--disable-animations} \
 ${is_quiet:+--quiet} \
-${moropo_v1_api_key:+--moropo-v1-api-key "$moropo_v1_api_key"} \
 ${env_list_parsed} \
 ${metadata_parsed} \
 "$app_file" "$workspace" 2>&1) || EXIT_CODE=$?

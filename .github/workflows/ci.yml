@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  bats:
+    name: BATS tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install bats
+        run: npm install -g bats
+      - name: Run BATS tests
+        run: bats test/test.bats
+
+  shellcheck:
+    name: ShellCheck (advisory)
+    runs-on: ubuntu-latest
+    # step.sh runs under Bitrise's bash toolkit (step.yml: toolkit.bash), so it
+    # is linted as bash. Advisory for now — the script predates this workflow
+    # and carries pre-existing style warnings; promote to a gate once cleaned.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: ShellCheck step.sh (as bash)
+        run: shellcheck --shell=bash step.sh

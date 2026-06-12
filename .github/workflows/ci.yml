@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  bats:
+    name: BATS tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install bats
+        run: sudo npm install -g bats
+      - name: Run BATS tests
+        run: bats test/test.bats
+
+  shellcheck:
+    name: ShellCheck (advisory)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ShellCheck step.sh (as bash, advisory)
+        # step.sh runs under Bitrise's bash toolkit (step.yml: toolkit.bash), so
+        # lint it as bash. Advisory (|| true): the script predates this workflow
+        # and carries pre-existing style warnings; findings still print to the log.
+        run: shellcheck --shell=bash step.sh || true

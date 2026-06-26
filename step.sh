@@ -136,6 +136,10 @@ ${metadata_parsed} \
 # Capture the command output and display it
 echo "Waiting for full test results so we can parse outputs... this may take a while for non-async tests"
 echo "Check status at https://console.devicecloud.dev/results"
+# Forward CI identity so DCD notices can target this Bitrise step. DCD_STEP_VERSION
+# can be set to forward the step version; provider alone enables CI-surface notices.
+export DCD_CI_PROVIDER="bitrise"
+export DCD_CI_WRAPPER_VERSION="${DCD_STEP_VERSION:-}"
 OUTPUT=$(npx --yes "$DCD_VERSION" cloud --quiet \
 --apiKey "$api_key" \
 ${allure_path:+--allure-path "$allure_path"} \

@@ -180,6 +180,13 @@ inputs:
       is_expand: true
       is_required: false
 
+  - check_name: ""
+    opts:
+      title: "GitHub Check Name"
+      summary: "Names the GitHub check this run posts, e.g. \"iOS\" gives \"DeviceCloud / iOS\". Only applies when the run carries GitHub commit metadata (gh_sha/gh_repo) and your org has the DeviceCloud GitHub App installed. Use it when a commit is tested more than once so each run gets a check that can be required separately in branch protection, and keep the value fixed for a given workflow."
+      is_expand: true
+      is_required: false
+
   - device_locale: ""
     opts:
       title: "Device Locale"

@@ -90,7 +90,12 @@ echo "app_url: $app_url"
 echo "disable_animations: $disable_animations"
 echo "quiet: $quiet"
 echo "use_beta: $use_beta"
+echo "check_name: $check_name"
 
+# check_name is passed as its own quoted `-m` pair rather than folded into
+# metadata_parsed, which expands unquoted: a check name containing a space would
+# split into two argv entries and the stray word would land as a positional (app
+# file / workspace).
 echo "Running command: npx --yes \"$DCD_VERSION\" cloud --quiet \
 --apiKey \"$api_key\" \
 ${allure_path:+--allure-path \"$allure_path\"} \
@@ -121,6 +126,7 @@ ${junit_path:+--junit-path \"$junit_path\"} \
 ${is_maestro_chrome_onboarding:+--maestro-chrome-onboarding} \
 ${maestro_version:+--maestro-version \"$maestro_version\"} \
 ${name:+--name \"$name\"} \
+${check_name:+-m \"gh_check_name=$check_name\"} \
 ${orientation:+--orientation \"$orientation\"} \
 ${report:+--report \"$report\"} \
 ${retry:+--retry \"$retry\"} \
@@ -170,6 +176,7 @@ ${junit_path:+--junit-path "$junit_path"} \
 ${is_maestro_chrome_onboarding:+--maestro-chrome-onboarding} \
 ${maestro_version:+--maestro-version "$maestro_version"} \
 ${name:+--name "$name"} \
+${check_name:+-m "gh_check_name=$check_name"} \
 ${orientation:+--orientation "$orientation"} \
 ${report:+--report "$report"} \
 ${retry:+--retry "$retry"} \

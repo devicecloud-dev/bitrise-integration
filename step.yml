@@ -59,6 +59,13 @@ inputs:
       is_expand: true
       is_required: false
 
+  - app_url: ""
+    opts:
+      title: "Expo App URL"
+      summary: "Signed URL to an Expo iOS build (.tar.gz). The archive is downloaded and extracted automatically. Expo signed URLs expire after ~1 hour."
+      is_expand: true
+      is_required: false
+
   - android_device: ""
     opts:
       title: "Android Device"
@@ -254,7 +261,7 @@ inputs:
   - report: ""
     opts:
       title: "Report Format"
-      summary: "Generate and download test reports in the specified format (allure, junit, or html)"
+      summary: "Generate and download test reports in the specified format (allure, junit, html, or html-detailed)"
       is_expand: true
       is_required: false
 
@@ -301,6 +308,39 @@ inputs:
     opts:
       title: "Debug Mode"
       summary: "Enable detailed debug logging for troubleshooting issues"
+      is_expand: true
+      is_required: false
+      default_value: "false"
+      value_options:
+        - "true"
+        - "false"
+
+  - disable_animations: "false"
+    opts:
+      title: "Disable Animations"
+      summary: "Disable device animations during test execution. On Android, disables system animation scales. On iOS, enables Reduce Motion. Reduces CPU load and may improve test reliability."
+      is_expand: true
+      is_required: false
+      default_value: "false"
+      value_options:
+        - "true"
+        - "false"
+
+  - quiet: "false"
+    opts:
+      title: "Quiet Mode"
+      summary: "Suppress the progress table output from the DCD CLI."
+      is_expand: true
+      is_required: false
+      default_value: "false"
+      value_options:
+        - "true"
+        - "false"
+
+  - use_beta: "false"
+    opts:
+      title: "Use Beta CLI"
+      summary: "Use the beta version of the DCD CLI instead of the latest stable release."
       is_expand: true
       is_required: false
       default_value: "false"

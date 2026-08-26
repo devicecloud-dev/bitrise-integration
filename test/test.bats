@@ -30,6 +30,9 @@ done
 case "$sub" in
   cloud)
     echo "STUB_CLOUD_CALLED_WITH: $*"
+    # One line per argv entry as well, so a test can tell "-m a=b c" (three
+    # words, from an unquoted expansion) from "-m" plus "a=b c" (two args).
+    for a in "$@"; do echo "STUB_CLOUD_ARG: $a"; done
     echo "View results: https://console.devicecloud.dev/results?upload=fake-upload-id"
     exit "${STUB_CLOUD_EXIT:-0}"
     ;;
@@ -70,8 +73,8 @@ STUB
   # step.sh reads Bitrise inputs from lowercase env vars; clear any the host
   # runner may have exported so each test specifies exactly what it wants.
   unset api_key app_file workspace android_device android_api_level ios_device \
-        name async google_play debug disable_animations use_beta env_list \
-        metadata download_artifacts STUB_STATUS STUB_CLOUD_EXIT
+        name check_name async google_play debug disable_animations use_beta \
+        env_list metadata download_artifacts STUB_STATUS STUB_CLOUD_EXIT
 }
 
 teardown() {
@@ -125,6 +128,24 @@ teardown() {
   [[ "$output" == *"--android-api-level 34"* ]]
   [[ "$output" == *"--ios-device iphone-15"* ]]
   [[ "$output" == *"--name My Run"* ]]
+}
+
+@test "sends check_name as a single gh_check_name metadata pair" {
+  # A space in the value must survive as one argument: it reaches the backend as
+  # the GitHub check's name, and a split would leave a stray positional where the
+  # app file / workspace go.
+  export api_key="k"
+  export check_name="iOS smoke"
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"STUB_CLOUD_ARG: gh_check_name=iOS smoke"* ]]
+}
+
+@test "sends no gh_check_name when check_name is unset" {
+  export api_key="k"
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"gh_check_name"* ]]
 }
 
 @test "passes --async only when async=true" {

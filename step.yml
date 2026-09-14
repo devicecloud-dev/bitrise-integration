@@ -257,6 +257,13 @@ inputs:
       is_expand: true
       is_required: false
 
+  - render_engine: ""
+    opts:
+      title: "Render Engine"
+      summary: "[Android only] Software renderer the emulator boots with (lavapipe or swiftshader). Leave empty to let DeviceCloud choose: lavapipe by default, swiftshader for apps shipping the Flutter engine."
+      is_expand: true
+      is_required: false
+
   - report: ""
     opts:
       title: "Report Format"

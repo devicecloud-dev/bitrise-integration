@@ -84,6 +84,7 @@ echo "orientation: $orientation"
 echo "report: $report"
 echo "retry: $retry"
 echo "runner_type: $runner_type"
+echo "render_engine: $render_engine"
 echo "show_crosshairs: $show_crosshairs"
 echo "workspace: $workspace"
 echo "app_url: $app_url"
@@ -131,6 +132,7 @@ ${orientation:+--orientation \"$orientation\"} \
 ${report:+--report \"$report\"} \
 ${retry:+--retry \"$retry\"} \
 ${runner_type:+--runner-type \"$runner_type\"} \
+${render_engine:+--render-engine \"$render_engine\"} \
 ${is_show_crosshairs:+--show-crosshairs} \
 ${app_url:+--app-url \"$app_url\"} \
 ${is_disable_animations:+--disable-animations} \
@@ -181,6 +183,7 @@ ${orientation:+--orientation "$orientation"} \
 ${report:+--report "$report"} \
 ${retry:+--retry "$retry"} \
 ${runner_type:+--runner-type "$runner_type"} \
+${render_engine:+--render-engine "$render_engine"} \
 ${is_show_crosshairs:+--show-crosshairs} \
 ${app_url:+--app-url "$app_url"} \
 ${is_disable_animations:+--disable-animations} \

@@ -190,6 +190,12 @@ ${metadata_parsed} \
 "$app_file" "$workspace" 2>&1) || EXIT_CODE=$?
 echo "$OUTPUT"
 
+# The CLI's exit code is the primary verdict: it is computed by the process that
+# actually watched the run. 0 = every test passed, 1 = CLI/infra error, 2 = the
+# run itself failed (a failed test, or a cancelled one). Keep it: the status
+# block below may only add failures, never clear this one.
+CLI_EXIT_CODE=$EXIT_CODE
+
 # Extract upload ID from console URL
 UPLOAD_ID=$(echo "$OUTPUT" | grep -o 'upload=[a-zA-Z0-9-]*' | cut -d= -f2 | head -n1)
 
@@ -216,11 +222,17 @@ if [ -n "$UPLOAD_ID" ]; then
         envman add --key DEVICE_CLOUD_APP_BINARY_ID --value "$APP_BINARY_ID"
     fi
     
-    # Set exit code based on status
-    if [ "$TEST_STATUS" = "FAILED" ]; then
+    # Set exit code based on status. A bad status fails the step; a good one
+    # only clears the step if the CLI agreed. Clearing it unconditionally is
+    # what let a cancelled run (CLI exit 2) report green when the status
+    # rollup wrongly said PASSED.
+    if [ "$TEST_STATUS" = "FAILED" ] || [ "$TEST_STATUS" = "CANCELLED" ]; then
         EXIT_CODE=1
-    elif [ "$TEST_STATUS" = "PASSED" ]; then
+    elif [ "$TEST_STATUS" = "PASSED" ] && [ "$CLI_EXIT_CODE" -eq 0 ]; then
         EXIT_CODE=0
+    elif [ "$CLI_EXIT_CODE" -ne 0 ]; then
+        echo "dcd exited $CLI_EXIT_CODE; failing the step despite upload status '$TEST_STATUS'."
+        EXIT_CODE=1
     fi
 fi
 

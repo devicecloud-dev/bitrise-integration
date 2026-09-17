@@ -111,6 +111,26 @@ inputs:
         - "true"
         - "false"
 
+  - cancel_previous: "false"
+    opts:
+      title: "Cancel Previous Run"
+      summary: "Cancel the still-queued tests of the previous run from the same CI context"
+      description: |
+        Cancels the still-queued tests of the previous run from the same CI
+        context when this run is submitted. Tests already running are left to
+        finish; cancelled tests are refunded at 75%.
+
+        The context is matched on repository + branch (or PR) + `check_name`.
+        Bitrise reports no build id to DeviceCloud, so if one build runs this
+        step more than once give each invocation its own `check_name` —
+        otherwise the second would cancel the first.
+      is_expand: true
+      is_required: false
+      default_value: "false"
+      value_options:
+        - "true"
+        - "false"
+
   - dry_run: "false"
     opts:
       title: "Dry Run"

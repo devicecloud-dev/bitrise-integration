@@ -32,6 +32,7 @@ fi
 # Refine variables
 [[ "$async" == "true" ]] && is_async="true"
 [[ "$google_play" == "true" ]] && is_google_play="true"
+[[ "$cancel_previous" == "true" ]] && is_cancel_previous="true"
 [[ "$ignore_sha_check" == "true" ]] && is_ignore_sha_check="true"
 [[ "$show_crosshairs" == "true" ]] && is_show_crosshairs="true"
 [[ "$maestro_chrome_onboarding" == "true" ]] && is_maestro_chrome_onboarding="true"
@@ -59,6 +60,7 @@ echo "app_binary_id: $app_binary_id"
 echo "app_file: $app_file"
 echo "artifacts_path: $artifacts_path"
 echo "async: $async"
+echo "cancel_previous: $cancel_previous"
 echo "config: $config"
 echo "device_locale: $device_locale"
 echo "download_artifacts: $download_artifacts"
@@ -107,6 +109,7 @@ ${api_url:+--api-url \"$api_url\"} \
 ${app_binary_id:+--app-binary-id \"$app_binary_id\"} \
 ${artifacts_path:+--artifacts-path \"$artifacts_path\"} \
 ${is_async:+--async} \
+${is_cancel_previous:+--cancel-previous} \
 ${config:+--config \"$config\"} \
 ${is_debug:+--debug} \
 ${device_locale:+--device-locale \"$device_locale\"} \
@@ -158,6 +161,7 @@ ${api_url:+--api-url "$api_url"} \
 ${app_binary_id:+--app-binary-id "$app_binary_id"} \
 ${artifacts_path:+--artifacts-path "$artifacts_path"} \
 ${is_async:+--async} \
+${is_cancel_previous:+--cancel-previous} \
 ${config:+--config "$config"} \
 ${is_debug:+--debug} \
 ${device_locale:+--device-locale "$device_locale"} \

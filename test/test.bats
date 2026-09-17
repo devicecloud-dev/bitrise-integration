@@ -162,6 +162,20 @@ teardown() {
   [[ "$output" != *"--async"* ]]
 }
 
+@test "passes --cancel-previous only when cancel_previous=true" {
+  export api_key="k"
+
+  export cancel_previous="true"
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--cancel-previous"* ]]
+
+  export cancel_previous="false"
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"--cancel-previous"* ]]
+}
+
 @test "boolean flags appear only when their inputs are true" {
   export api_key="k"
   export google_play="true"

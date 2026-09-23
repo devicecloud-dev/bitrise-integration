@@ -1,5 +1,42 @@
 #!/bin/sh
 
+# Print one field of the `dcd status --json` document read from stdin: a string
+# as-is, anything else as compact JSON, nothing when the field is absent or
+# null. "flowResults" is the tests array cut down to name, status and failReason.
+# Exits 1 when stdin holds no JSON object.
+#
+# The CLI pretty-prints that document (JSON.stringify(obj, null, 2)), so the
+# compact-JSON greps this replaces ('"status":"...') never matched and every
+# status-derived output came out empty. node is always available here: the
+# step runs the CLI through npx.
+status_field() {
+    node -e '
+const text = require("fs").readFileSync(0, "utf8");
+const start = text.search(/^[ \t]*\{/m);
+let doc = null;
+if (start !== -1) {
+  try {
+    doc = JSON.parse(text.slice(start, text.lastIndexOf("}") + 1));
+  } catch (e) {
+    doc = null;
+  }
+}
+if (!doc || typeof doc !== "object" || Array.isArray(doc)) process.exit(1);
+const field = process.argv[1];
+const value =
+  field === "flowResults"
+    ? (Array.isArray(doc.tests) ? doc.tests : []).map((t) => {
+        const r = { name: t && t.name, status: t && t.status };
+        if (t && t.failReason) r.failReason = t.failReason;
+        return r;
+      })
+    : doc[field];
+if (value !== undefined && value !== null) {
+  process.stdout.write(typeof value === "string" ? value : JSON.stringify(value));
+}
+' "$1"
+}
+
 # Parse env variables
 env_list_parsed=""
 if [ -n "$env_list" ]; then
@@ -209,26 +246,31 @@ UPLOAD_ID=$(echo "$OUTPUT" | grep -o 'upload=[a-zA-Z0-9-]*' | cut -d= -f2 | head
 if [ -n "$UPLOAD_ID" ]; then
     # Get test status using the status command
     STATUS_OUTPUT=$(npx --yes "$DCD_VERSION" status --json --upload-id "$UPLOAD_ID" --api-key "$api_key" ${api_url:+--api-url "$api_url"})
-    
-    # Extract values from status JSON using grep and sed
+
     # Console URL
     CONSOLE_URL=$(echo "$OUTPUT" | grep -o 'https://console\.devicecloud\.dev/results?upload=[a-zA-Z0-9-]*')
     envman add --key DEVICE_CLOUD_CONSOLE_URL --value "$CONSOLE_URL"
-    
-    # Status
-    TEST_STATUS=$(echo "$STATUS_OUTPUT" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+
+    # Status, flow results and binary id, read from the status JSON. ERROR marks
+    # a status call that returned no JSON at all; the verdict below then rests
+    # on the CLI's exit code alone, as it did while these outputs were empty.
+    if TEST_STATUS=$(printf '%s' "$STATUS_OUTPUT" | status_field status); then
+        FLOW_RESULTS=$(printf '%s' "$STATUS_OUTPUT" | status_field flowResults)
+        APP_BINARY_ID=$(printf '%s' "$STATUS_OUTPUT" | status_field appBinaryId)
+    else
+        echo "Could not read the upload status from 'dcd status --json'; reporting ERROR. Output was:"
+        echo "$STATUS_OUTPUT"
+        TEST_STATUS="ERROR"
+        FLOW_RESULTS=""
+        APP_BINARY_ID=""
+    fi
+
     envman add --key DEVICE_CLOUD_UPLOAD_STATUS --value "$TEST_STATUS"
-    
-    # Flow Results
-    FLOW_RESULTS=$(echo "$STATUS_OUTPUT" | grep -o '"tests":\[[^]]*\]')
-    envman add --key DEVICE_CLOUD_FLOW_RESULTS --value "$FLOW_RESULTS"
-    
-    # App Binary ID
-    APP_BINARY_ID=$(echo "$STATUS_OUTPUT" | grep -o '"appBinaryId":"[^"]*"' | cut -d'"' -f4)
+    envman add --key DEVICE_CLOUD_FLOW_RESULTS --value "${FLOW_RESULTS:-[]}"
     if [ -n "$APP_BINARY_ID" ]; then
         envman add --key DEVICE_CLOUD_APP_BINARY_ID --value "$APP_BINARY_ID"
     fi
-    
+
     # Set exit code based on status. A bad status fails the step; a good one
     # only clears the step if the CLI agreed. Clearing it unconditionally is
     # what let a cancelled run (CLI exit 2) report green when the status
@@ -239,6 +281,11 @@ if [ -n "$UPLOAD_ID" ]; then
         EXIT_CODE=0
     elif [ "$CLI_EXIT_CODE" -ne 0 ]; then
         echo "dcd exited $CLI_EXIT_CODE; failing the step despite upload status '$TEST_STATUS'."
+        EXIT_CODE=1
+    elif [ "$TEST_STATUS" = "ERROR" ] && [ "$is_json_file" = "true" ] && [ "$is_async" != "true" ]; then
+        # json_file keeps dcd's exit code at 0 on a failed run, so without a
+        # status nothing is left to tell a pass from a failure.
+        echo "The upload status is unknown and json_file keeps dcd's exit code at 0; failing the step."
         EXIT_CODE=1
     fi
 fi

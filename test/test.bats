@@ -6,11 +6,9 @@
 # entry_file: step.sh) — the leading `#!/bin/sh` shebang is not used by Bitrise.
 #
 # The `status` stub emits PRETTY-printed JSON because that is what the real CLI
-# produces (`dcd status --json` => JSON.stringify(obj, null, 2)). Tests whose
-# names start with "[known bug]" are skipped: step.sh greps COMPACT-JSON
-# patterns ('"status":"..."') that never match the pretty output, so the
-# status-derived outputs are currently empty. Unskip them once step.sh parses
-# the real output (e.g. via jq or space-tolerant patterns).
+# produces (`dcd status --json` => JSON.stringify(obj, null, 2)). Fixture-based
+# tests replay whole documents from test/fixtures/ (STUB_STATUS_FIXTURE), and
+# STUB_STATUS_RAW replays arbitrary text (npm noise, non-JSON errors).
 
 setup() {
   TEST_DIR="$(mktemp -d)"
@@ -34,9 +32,22 @@ case "$sub" in
     # words, from an unquoted expansion) from "-m" plus "a=b c" (two args).
     for a in "$@"; do echo "STUB_CLOUD_ARG: $a"; done
     echo "View results: https://console.devicecloud.dev/results?upload=fake-upload-id"
-    exit "${STUB_CLOUD_EXIT:-0}"
+    code="${STUB_CLOUD_EXIT:-0}"
+    # Like the real CLI: --json-file keeps the exit code at 0 on a failed run.
+    for a in "$@"; do
+      if [ "$a" = "--json-file" ] && [ "$code" = "2" ]; then code=0; fi
+    done
+    exit "$code"
     ;;
   status)
+    if [ -n "${STUB_STATUS_RAW:-}" ]; then
+      printf '%s\n' "${STUB_STATUS_RAW}"
+      exit 0
+    fi
+    if [ -n "${STUB_STATUS_FIXTURE:-}" ]; then
+      cat "${STUB_STATUS_FIXTURE}"
+      exit 0
+    fi
     st="${STUB_STATUS:-PASSED}"
     cat <<JSON
 {
@@ -74,7 +85,14 @@ STUB
   # runner may have exported so each test specifies exactly what it wants.
   unset api_key app_file workspace android_device android_api_level ios_device \
         name check_name async google_play debug disable_animations use_beta \
-        env_list metadata download_artifacts STUB_STATUS STUB_CLOUD_EXIT
+        env_list metadata download_artifacts json_file cancel_previous \
+        STUB_STATUS STUB_CLOUD_EXIT STUB_STATUS_FIXTURE STUB_STATUS_RAW
+  FIXTURES="${BATS_TEST_DIRNAME}/fixtures"
+}
+
+# The value the step handed to `envman add` for a given output key.
+envman_value() {
+  sed -n "s/^add --key $1 --value //p" "${ENVMAN_LOG}"
 }
 
 teardown() {
@@ -229,20 +247,121 @@ teardown() {
   [ "$status" -eq 0 ]
 }
 
-# --- Known bug: status-JSON outputs (compact greps vs pretty-printed JSON) ----
+# --- Status JSON outputs (pretty-printed, as the real CLI prints them) --------
 
-@test "[known bug] emits DEVICE_CLOUD_UPLOAD_STATUS from status JSON" {
-  skip "step.sh greps '\"status\":\"...\"' but dcd status --json is pretty-printed; value is empty until the parser is fixed"
+@test "emits DEVICE_CLOUD_UPLOAD_STATUS from status JSON" {
   export api_key="k"
   run bash "${TEST_DIR}/step.sh"
   [ "$status" -eq 0 ]
   grep -qF -- "--key DEVICE_CLOUD_UPLOAD_STATUS --value PASSED" "${ENVMAN_LOG}"
 }
 
-@test "[known bug] emits DEVICE_CLOUD_APP_BINARY_ID from status JSON" {
-  skip "step.sh greps '\"appBinaryId\":\"...\"' but dcd status --json is pretty-printed; value is empty until the parser is fixed"
+@test "emits DEVICE_CLOUD_APP_BINARY_ID from status JSON" {
   export api_key="k"
   run bash "${TEST_DIR}/step.sh"
   [ "$status" -eq 0 ]
   grep -qF -- "--key DEVICE_CLOUD_APP_BINARY_ID --value abi" "${ENVMAN_LOG}"
+}
+
+@test "fixture: a passing run sets every status output and exits 0" {
+  export api_key="k"
+  export STUB_STATUS_FIXTURE="${FIXTURES}/status-passed.json"
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 0 ]
+  [ "$(envman_value DEVICE_CLOUD_UPLOAD_STATUS)" = "PASSED" ]
+  [ "$(envman_value DEVICE_CLOUD_APP_BINARY_ID)" = "abi" ]
+  [ "$(envman_value DEVICE_CLOUD_FLOW_RESULTS)" = '[{"name":"./flows/login.yaml","status":"PASSED"},{"name":"./flows/search.yaml","status":"PASSED"}]' ]
+}
+
+@test "fixture: a failed run reports FAILED with the fail reason and fails the step" {
+  export api_key="k"
+  export STUB_STATUS_FIXTURE="${FIXTURES}/status-failed.json"
+  export STUB_CLOUD_EXIT=2
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 1 ]
+  [ "$(envman_value DEVICE_CLOUD_UPLOAD_STATUS)" = "FAILED" ]
+  [ "$(envman_value DEVICE_CLOUD_FLOW_RESULTS)" = '[{"name":"./flows/login.yaml","status":"PASSED"},{"name":"./flows/search.yaml","status":"FAILED","failReason":"Assertion is false: \"Results\" is visible"}]' ]
+}
+
+@test "json_file: a FAILED run fails the step although dcd exits 0" {
+  # --json-file keeps the CLI's exit code at 0 on a failed run (the stub does
+  # the same), so the status is the only failure signal the step gets. Before
+  # the status JSON was parsed, these runs passed the step.
+  export api_key="k"
+  export json_file="true"
+  export STUB_STATUS_FIXTURE="${FIXTURES}/status-failed.json"
+  export STUB_CLOUD_EXIT=2
+  run bash "${TEST_DIR}/step.sh"
+  [[ "$output" == *"STUB_CLOUD_ARG: --json-file"* ]]
+  [ "$status" -eq 1 ]
+  [ "$(envman_value DEVICE_CLOUD_UPLOAD_STATUS)" = "FAILED" ]
+}
+
+@test "json_file: a PASSED run passes the step" {
+  export api_key="k"
+  export json_file="true"
+  export STUB_STATUS_FIXTURE="${FIXTURES}/status-passed.json"
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 0 ]
+  [ "$(envman_value DEVICE_CLOUD_UPLOAD_STATUS)" = "PASSED" ]
+}
+
+@test "json_file: an unreadable status fails the step, since dcd's exit code is no verdict" {
+  export api_key="k"
+  export json_file="true"
+  export STUB_STATUS_RAW="npm error code ETIMEDOUT"
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 1 ]
+  [ "$(envman_value DEVICE_CLOUD_UPLOAD_STATUS)" = "ERROR" ]
+
+  # An async submission has no verdict to lose, so it still passes.
+  : > "${ENVMAN_LOG}"
+  export async="true"
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 0 ]
+}
+
+@test "a PASSED status does not clear a failing CLI exit code" {
+  export api_key="k"
+  export STUB_STATUS_FIXTURE="${FIXTURES}/status-passed.json"
+  export STUB_CLOUD_EXIT=2
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"dcd exited 2"* ]]
+}
+
+@test "still reads compact status JSON" {
+  export api_key="k"
+  export STUB_STATUS_RAW='{"status":"FAILED","appBinaryId":"abc","tests":[{"name":"t1","status":"FAILED"}]}'
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 1 ]
+  [ "$(envman_value DEVICE_CLOUD_UPLOAD_STATUS)" = "FAILED" ]
+  [ "$(envman_value DEVICE_CLOUD_APP_BINARY_ID)" = "abc" ]
+}
+
+@test "skips npm noise printed ahead of the status JSON" {
+  export api_key="k"
+  STUB_STATUS_RAW="npm warn exec The following package was not found and will be installed: @devicecloud.dev/dcd@5.6.0
+$(cat "${FIXTURES}/status-passed.json")"
+  export STUB_STATUS_RAW
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 0 ]
+  [ "$(envman_value DEVICE_CLOUD_UPLOAD_STATUS)" = "PASSED" ]
+}
+
+@test "status output with no JSON reports ERROR and leaves the verdict to the CLI" {
+  export api_key="k"
+  export STUB_STATUS_RAW="npm error code ETIMEDOUT"
+
+  export STUB_CLOUD_EXIT=0
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 0 ]
+  [ "$(envman_value DEVICE_CLOUD_UPLOAD_STATUS)" = "ERROR" ]
+  [ "$(envman_value DEVICE_CLOUD_FLOW_RESULTS)" = "[]" ]
+
+  : > "${ENVMAN_LOG}"
+  export STUB_CLOUD_EXIT=2
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 1 ]
+  [ "$(envman_value DEVICE_CLOUD_UPLOAD_STATUS)" = "ERROR" ]
 }

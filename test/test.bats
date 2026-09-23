@@ -321,6 +321,47 @@ teardown() {
   [ "$status" -eq 0 ]
 }
 
+@test "fixture: a superseded run reports SUPERSEDED and passes the step" {
+  # The API rolls the superseded run's cancelled tests up to FAILED; the
+  # supersededBy field is what says a newer run replaced it.
+  export api_key="k"
+  export STUB_STATUS_FIXTURE="${FIXTURES}/status-superseded.json"
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 0 ]
+  [ "$(envman_value DEVICE_CLOUD_UPLOAD_STATUS)" = "SUPERSEDED" ]
+  [[ "$output" == *"Superseded by newer-upload-id"* ]]
+  [[ "$output" == *"Newer run: https://console.devicecloud.dev/results?upload=newer-upload-id"* ]]
+  [ "$(envman_value DEVICE_CLOUD_FLOW_RESULTS)" = '[{"name":"./flows/login.yaml","status":"PASSED"},{"name":"./flows/search.yaml","status":"CANCELLED"}]' ]
+}
+
+@test "fixture: a superseded run passes even when an older CLI exits 2 for it" {
+  export api_key="k"
+  export STUB_STATUS_FIXTURE="${FIXTURES}/status-superseded.json"
+  export STUB_CLOUD_EXIT=2
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 0 ]
+  [ "$(envman_value DEVICE_CLOUD_UPLOAD_STATUS)" = "SUPERSEDED" ]
+}
+
+@test "json_file: a superseded run passes the step" {
+  export api_key="k"
+  export json_file="true"
+  export cancel_previous="true"
+  export STUB_STATUS_FIXTURE="${FIXTURES}/status-superseded.json"
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 0 ]
+  [ "$(envman_value DEVICE_CLOUD_UPLOAD_STATUS)" = "SUPERSEDED" ]
+}
+
+@test "without supersededBy (older APIs, every other run) nothing is superseded" {
+  export api_key="k"
+  export STUB_STATUS_FIXTURE="${FIXTURES}/status-failed.json"
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" != *"Superseded"* ]]
+  [ "$(envman_value DEVICE_CLOUD_UPLOAD_STATUS)" = "FAILED" ]
+}
+
 @test "a PASSED status does not clear a failing CLI exit code" {
   export api_key="k"
   export STUB_STATUS_FIXTURE="${FIXTURES}/status-passed.json"

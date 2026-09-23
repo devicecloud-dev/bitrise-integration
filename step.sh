@@ -257,12 +257,27 @@ if [ -n "$UPLOAD_ID" ]; then
     if TEST_STATUS=$(printf '%s' "$STATUS_OUTPUT" | status_field status); then
         FLOW_RESULTS=$(printf '%s' "$STATUS_OUTPUT" | status_field flowResults)
         APP_BINARY_ID=$(printf '%s' "$STATUS_OUTPUT" | status_field appBinaryId)
+        SUPERSEDED_BY=$(printf '%s' "$STATUS_OUTPUT" | status_field supersededBy)
     else
         echo "Could not read the upload status from 'dcd status --json'; reporting ERROR. Output was:"
         echo "$STATUS_OUTPUT"
         TEST_STATUS="ERROR"
         FLOW_RESULTS=""
         APP_BINARY_ID=""
+        SUPERSEDED_BY=""
+    fi
+
+    # supersededBy: a newer run from the same CI context replaced this one
+    # (cancel_previous) and cancelled its queued tests. The API rolls those up
+    # to FAILED, but the run no longer speaks for the commit, so, like
+    # `dcd cloud` itself, the step does not fail for it. Absent on every other
+    # run, and on APIs that predate the field.
+    if [ -n "$SUPERSEDED_BY" ]; then
+        echo "Superseded by $SUPERSEDED_BY: a newer run from the same CI context replaced this one, so this step passes."
+        if [ -n "$CONSOLE_URL" ]; then
+            echo "Newer run: ${CONSOLE_URL/$UPLOAD_ID/$SUPERSEDED_BY}"
+        fi
+        TEST_STATUS="SUPERSEDED"
     fi
 
     envman add --key DEVICE_CLOUD_UPLOAD_STATUS --value "$TEST_STATUS"
@@ -274,8 +289,14 @@ if [ -n "$UPLOAD_ID" ]; then
     # Set exit code based on status. A bad status fails the step; a good one
     # only clears the step if the CLI agreed. Clearing it unconditionally is
     # what let a cancelled run (CLI exit 2) report green when the status
-    # rollup wrongly said PASSED.
-    if [ "$TEST_STATUS" = "FAILED" ] || [ "$TEST_STATUS" = "CANCELLED" ]; then
+    # rollup wrongly said PASSED. A superseded run passes whatever dcd exited
+    # with: an older CLI that doesn't know the state exits 2 for it.
+    if [ "$TEST_STATUS" = "SUPERSEDED" ]; then
+        if [ "$CLI_EXIT_CODE" -ne 0 ]; then
+            echo "dcd exited $CLI_EXIT_CODE, but the run was superseded; not failing the step."
+        fi
+        EXIT_CODE=0
+    elif [ "$TEST_STATUS" = "FAILED" ] || [ "$TEST_STATUS" = "CANCELLED" ]; then
         EXIT_CODE=1
     elif [ "$TEST_STATUS" = "PASSED" ] && [ "$CLI_EXIT_CODE" -eq 0 ]; then
         EXIT_CODE=0

@@ -124,6 +124,9 @@ inputs:
         Bitrise reports no build id to DeviceCloud, so if one build runs this
         step more than once give each invocation its own `check_name` —
         otherwise the second would cancel the first.
+
+        The superseded run does not fail its build: its step passes, with
+        `DEVICE_CLOUD_UPLOAD_STATUS` set to `SUPERSEDED`.
       is_expand: true
       is_required: false
       default_value: "false"
@@ -425,11 +428,11 @@ outputs:
   - DEVICE_CLOUD_FLOW_RESULTS:
     opts:
       title: "Flow Results"
-      summary: "JSON array containing results for each flow, including name, status, and any errors"
+      summary: "JSON array with one entry per flow: its name, status and, for a failed flow, failReason"
   - DEVICE_CLOUD_UPLOAD_STATUS:
     opts:
       title: "Test Run Status"
-      summary: "Status of the test run (PENDING, RUNNING, PASSED, FAILED, CANCELLED)"
+      summary: "Status of the test run: PASSED, FAILED, PENDING, QUEUED or RUNNING (an async run reports whatever it had reached at submission); SUPERSEDED when a newer run replaced it through cancel_previous; ERROR when the status could not be read"
   - DEVICE_CLOUD_APP_BINARY_ID:
     opts:
       title: "App Binary ID"

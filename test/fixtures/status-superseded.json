@@ -1,0 +1,22 @@
+{
+  "status": "FAILED",
+  "appBinaryId": "abi",
+  "uploadId": "fake-upload-id",
+  "consoleUrl": "https://console.devicecloud.dev/results?upload=fake-upload-id&result=101",
+  "name": "My Bitrise run",
+  "createdAt": "2026-09-23T10:00:00.000Z",
+  "supersededBy": "newer-upload-id",
+  "tests": [
+    {
+      "name": "./flows/login.yaml",
+      "status": "PASSED",
+      "durationSeconds": 42,
+      "createdAt": "2026-09-23T10:00:05.000Z"
+    },
+    {
+      "name": "./flows/search.yaml",
+      "status": "CANCELLED",
+      "createdAt": "2026-09-23T10:00:05.000Z"
+    }
+  ]
+}

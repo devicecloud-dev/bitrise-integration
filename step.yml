@@ -195,7 +195,7 @@ inputs:
   - android_no_snapshot: "false"
     opts:
       title: "Android No Snapshot"
-      summary: "[Android only] Force cold boot instead of using snapshot boot. Automatically enabled for API 35+ but can be used to force cold boot on older API levels."
+      summary: "[Android only] Force cold boot instead of using snapshot boot. Automatically enabled for API 34+ but can be used to force cold boot on older API levels."
       is_expand: true
       is_required: false
       default_value: "false"
@@ -420,7 +420,7 @@ inputs:
   - json: "false"
     opts:
       title: "JSON Output"
-      summary: "Output results in JSON format - note: will always provide exit code 0"
+      summary: "Print the CLI's results as JSON. The step still fails a failed run."
       is_expand: true
       is_required: false
       default_value: "false"
@@ -431,7 +431,7 @@ inputs:
   - json_file: "false"
     opts:
       title: "JSON File Output"
-      summary: "Write JSON output to a file with name <run_name>_dcd.json or <upload_id>_dcd.json if no name is provided"
+      summary: "Write the results as JSON to <upload_id>_dcd.json (or json_file_name). dcd exits 0 in this mode even when tests fail, so the step decides from the upload status: a failed run still fails the step."
       is_expand: true
       is_required: false
       default_value: "false"

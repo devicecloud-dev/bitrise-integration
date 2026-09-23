@@ -113,6 +113,19 @@ teardown() {
   [[ "$output" == *".maestro"* ]]
 }
 
+@test "never prints the API key itself" {
+  export api_key="sk-live-do-not-print"
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 0 ]
+  # The key still reaches the CLI...
+  [[ "$output" == *"STUB_CLOUD_ARG: sk-live-do-not-print"* ]]
+  # ...but none of the step's own lines (everything the stub didn't print) shows it.
+  own_output="$(printf '%s\n' "$output" | grep -v '^STUB_CLOUD_')"
+  [[ "$own_output" != *"sk-live-do-not-print"* ]]
+  [[ "$own_output" == *"api_key: [REDACTED]"* ]]
+  [[ "$own_output" == *'--apiKey "[REDACTED]"'* ]]
+}
+
 @test "default package is the >=4.4.0 version range" {
   export api_key="k"
   run bash "${TEST_DIR}/step.sh"

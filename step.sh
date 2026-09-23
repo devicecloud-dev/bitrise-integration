@@ -85,13 +85,14 @@ cd $BITRISE_SOURCE_DIR
 
 EXIT_CODE=0
 
-# Log all variables for debugging
+# Log all variables for debugging, except the API key itself: don't rely on
+# Bitrise's log redaction to catch a secret the step prints on purpose.
 echo "DCD variables:"
 echo "allure_path: $allure_path"
 echo "android_api_level: $android_api_level"
 echo "android_device: $android_device"
 echo "android_no_snapshot: $android_no_snapshot"
-echo "api_key: $api_key"
+echo "api_key: ${api_key:+[REDACTED]}"
 echo "api_url: $api_url"
 echo "app_binary_id: $app_binary_id"
 echo "app_file: $app_file"
@@ -137,7 +138,7 @@ echo "check_name: $check_name"
 # split into two argv entries and the stray word would land as a positional (app
 # file / workspace).
 echo "Running command: npx --yes \"$DCD_VERSION\" cloud --quiet \
---apiKey \"$api_key\" \
+--apiKey \"${api_key:+[REDACTED]}\" \
 ${allure_path:+--allure-path \"$allure_path\"} \
 ${is_android_no_snapshot:+--android-no-snapshot} \
 ${android_api_level:+--android-api-level \"$android_api_level\"} \

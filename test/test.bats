@@ -86,7 +86,13 @@ STUB
   unset api_key app_file workspace android_device android_api_level ios_device \
         name check_name async google_play debug disable_animations use_beta \
         env_list metadata download_artifacts json_file cancel_previous \
+        include_github_context \
         STUB_STATUS STUB_CLOUD_EXIT STUB_STATUS_FIXTURE STUB_STATUS_RAW
+  # ...and the Bitrise env vars the GitHub context is derived from, in case
+  # the suite itself runs on Bitrise.
+  unset GIT_REPOSITORY_URL BITRISE_GIT_COMMIT GIT_CLONE_COMMIT_HASH \
+        BITRISE_GIT_BRANCH BITRISE_PULL_REQUEST BITRISEIO_PIPELINE_ID \
+        BITRISE_BUILD_SLUG
   FIXTURES="${BATS_TEST_DIRNAME}/fixtures"
 }
 
@@ -235,6 +241,119 @@ teardown() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"-m branch=main"* ]]
   [[ "$output" == *"-m sha=abc"* ]]
+}
+
+# --- GitHub context from Bitrise env vars ------------------------------------
+
+@test "derives the gh_* context for a GitHub PR build" {
+  export api_key="k"
+  export GIT_REPOSITORY_URL="https://github.com/acme/widgets.git"
+  export BITRISE_GIT_COMMIT="deadbeef"
+  export GIT_CLONE_COMMIT_HASH="mergecommit"
+  export BITRISE_GIT_BRANCH="feature/login"
+  export BITRISE_PULL_REQUEST="7"
+  export BITRISEIO_PIPELINE_ID="pipeline-123"
+  export BITRISE_BUILD_SLUG="build-9"
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"STUB_CLOUD_ARG: gh_repo=acme/widgets"* ]]
+  [[ "$output" == *"STUB_CLOUD_ARG: gh_sha=deadbeef"* ]]
+  [[ "$output" == *"STUB_CLOUD_ARG: gh_branch=feature/login"* ]]
+  [[ "$output" == *"STUB_CLOUD_ARG: gh_pr_number=7"* ]]
+  [[ "$output" == *"STUB_CLOUD_ARG: gh_pr_url=https://github.com/acme/widgets/pull/7"* ]]
+  # The pipeline build, shared by every workflow in it, not this build.
+  [[ "$output" == *"STUB_CLOUD_ARG: gh_run_id=pipeline-123"* ]]
+  [[ "$output" != *"build-9"* ]]
+  [[ "$output" != *"mergecommit"* ]]
+}
+
+@test "outside a pipeline gh_run_id is the build, and a branch build has no PR keys" {
+  export api_key="k"
+  export GIT_REPOSITORY_URL="https://github.com/acme/widgets"
+  export BITRISE_GIT_COMMIT="deadbeef"
+  export BITRISE_GIT_BRANCH="main"
+  export BITRISE_BUILD_SLUG="build-9"
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"STUB_CLOUD_ARG: gh_repo=acme/widgets"* ]]
+  [[ "$output" == *"STUB_CLOUD_ARG: gh_branch=main"* ]]
+  [[ "$output" == *"STUB_CLOUD_ARG: gh_run_id=build-9"* ]]
+  [[ "$output" != *"gh_pr_number"* ]]
+  [[ "$output" != *"gh_pr_url"* ]]
+}
+
+@test "falls back to the cloned commit when no commit triggered the build" {
+  export api_key="k"
+  export GIT_REPOSITORY_URL="https://github.com/acme/widgets.git"
+  export GIT_CLONE_COMMIT_HASH="cafef00d"
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"STUB_CLOUD_ARG: gh_sha=cafef00d"* ]]
+}
+
+@test "reads ssh, scp-style, credentialed and mixed-case GitHub remotes" {
+  export api_key="k"
+  for url in "git@github.com:acme/widgets.git" \
+             "ssh://git@github.com/acme/widgets.git" \
+             "https://x-access-token:secret@github.com/acme/widgets.git" \
+             "https://GitHub.com/acme/widgets/"; do
+    export GIT_REPOSITORY_URL="$url"
+    run bash "${TEST_DIR}/step.sh"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"STUB_CLOUD_ARG: gh_repo=acme/widgets"* ]]
+    [[ "$output" != *"secret@"* ]]
+  done
+}
+
+@test "attaches no GitHub repo context for other hosts, only the run id" {
+  export api_key="k"
+  export BITRISE_GIT_COMMIT="deadbeef"
+  export BITRISE_GIT_BRANCH="main"
+  export BITRISE_PULL_REQUEST="7"
+  export BITRISE_BUILD_SLUG="build-9"
+  for url in "https://gitlab.com/acme/widgets.git" \
+             "git@bitbucket.org:acme/widgets.git" \
+             "https://github.example.com/acme/widgets.git" \
+             "https://notgithub.com/acme/widgets.git"; do
+    export GIT_REPOSITORY_URL="$url"
+    run bash "${TEST_DIR}/step.sh"
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"gh_repo="* ]]
+    [[ "$output" != *"gh_sha="* ]]
+    [[ "$output" != *"gh_branch="* ]]
+    [[ "$output" != *"gh_pr_number="* ]]
+    [[ "$output" == *"STUB_CLOUD_ARG: gh_run_id=build-9"* ]]
+  done
+}
+
+@test "a key set in the metadata input wins over the derived one" {
+  export api_key="k"
+  export metadata=$'gh_repo=acme/mirror\ngh_branch=release'
+  export GIT_REPOSITORY_URL="https://github.com/acme/widgets.git"
+  export BITRISE_GIT_COMMIT="deadbeef"
+  export BITRISE_GIT_BRANCH="feature/login"
+  export BITRISE_PULL_REQUEST="7"
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"STUB_CLOUD_ARG: gh_repo=acme/mirror"* ]]
+  [[ "$output" == *"STUB_CLOUD_ARG: gh_branch=release"* ]]
+  [[ "$output" != *"gh_repo=acme/widgets"* ]]
+  [[ "$output" != *"gh_branch=feature/login"* ]]
+  # A PR URL built from the Bitrise repo would point at the wrong repository.
+  [[ "$output" != *"gh_pr_url"* ]]
+  [[ "$output" == *"STUB_CLOUD_ARG: gh_sha=deadbeef"* ]]
+}
+
+@test "include_github_context=false attaches none of it" {
+  export api_key="k"
+  export include_github_context="false"
+  export GIT_REPOSITORY_URL="https://github.com/acme/widgets.git"
+  export BITRISE_GIT_COMMIT="deadbeef"
+  export BITRISE_GIT_BRANCH="main"
+  export BITRISEIO_PIPELINE_ID="pipeline-123"
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"gh_"* ]]
 }
 
 # --- Outputs & exit code -----------------------------------------------------

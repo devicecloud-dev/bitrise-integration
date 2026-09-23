@@ -97,8 +97,43 @@ inputs:
     opts:
       title: "Metadata"
       summary: "Arbitrary key-value metadata to include with your test run, separated by newlines (format: key=value)"
+      description: |
+        Arbitrary `key=value` pairs to attach to the run, one per line.
+
+        For a GitHub repository the step also attaches the build's GitHub
+        context (see `include_github_context`). A key you set here wins over
+        the derived value, e.g. `gh_repo=owner/repo` when this Bitrise app
+        builds a mirror of a GitHub repository.
       is_expand: true
       is_required: false
+
+  - include_github_context: "true"
+    opts:
+      title: "Include GitHub Context"
+      summary: "Attach this build's GitHub repo, commit, branch and PR as gh_* metadata, which GitHub checks and cancel_previous rely on. Set to false to opt out."
+      description: |
+        When the app's repository is on github.com, attaches the build's
+        GitHub context to the run as metadata, read from Bitrise's env vars:
+
+        - `gh_repo` from `GIT_REPOSITORY_URL`
+        - `gh_sha` from `BITRISE_GIT_COMMIT` (else `GIT_CLONE_COMMIT_HASH`)
+        - `gh_branch` from `BITRISE_GIT_BRANCH`
+        - `gh_pr_number` and `gh_pr_url` from `BITRISE_PULL_REQUEST`
+
+        For any repository it also attaches `gh_run_id`, from
+        `BITRISEIO_PIPELINE_ID` (else `BITRISE_BUILD_SLUG`), so runs from the
+        same pipeline build never cancel each other under `cancel_previous`.
+
+        With the DeviceCloud GitHub App connected, `gh_repo` + `gh_sha` make
+        DeviceCloud post a GitHub check for the run; `gh_repo` + the branch
+        or PR are what `cancel_previous` matches runs on. Keys set in the
+        `metadata` input win. Set to `false` to attach none of these.
+      is_expand: true
+      is_required: false
+      default_value: "true"
+      value_options:
+        - "true"
+        - "false"
 
   - async: "false"
     opts:
@@ -120,10 +155,15 @@ inputs:
         context when this run is submitted. Tests already running are left to
         finish; cancelled tests are refunded at 75%.
 
-        The context is matched on repository + branch (or PR) + `check_name`.
-        Bitrise reports no build id to DeviceCloud, so if one build runs this
-        step more than once give each invocation its own `check_name` —
-        otherwise the second would cancel the first.
+        The context is matched on repository + branch (or PR) + `check_name`,
+        taken from the GitHub context the step attaches (see
+        `include_github_context`) or from `gh_repo` and `gh_branch` or
+        `gh_pr_number` in `metadata`. Without a repository and a branch or
+        PR nothing is cancelled. Runs from the same pipeline build never
+        cancel each other. If one build runs this step more than once (iOS
+        and Android, say), give each invocation its own `check_name`:
+        otherwise one platform's new run cancels the other platform's
+        previous run.
 
         The superseded run does not fail its build: its step passes, with
         `DEVICE_CLOUD_UPLOAD_STATUS` set to `SUPERSEDED`.
@@ -212,7 +252,7 @@ inputs:
   - check_name: ""
     opts:
       title: "GitHub Check Name"
-      summary: "Names the GitHub check this run posts, e.g. \"iOS\" gives \"DeviceCloud / iOS\". Only applies when the run carries GitHub commit metadata (gh_sha/gh_repo) and your org has the DeviceCloud GitHub App installed. Use it when a commit is tested more than once so each run gets a check that can be required separately in branch protection, and keep the value fixed for a given workflow."
+      summary: "Names the GitHub check this run posts, e.g. \"iOS\" gives \"DeviceCloud / iOS\". Only applies when the run carries GitHub commit metadata (gh_sha/gh_repo, attached automatically for GitHub repositories, see include_github_context) and your org has the DeviceCloud GitHub App installed. Use it when a commit is tested more than once so each run gets a check that can be required separately in branch protection, and keep the value fixed for a given workflow."
       is_expand: true
       is_required: false
 

@@ -66,6 +66,57 @@ if [ -n "$metadata" ]; then
     done <<< "$metadata"
 fi
 
+# owner/repo for a github.com remote (https, ssh:// or scp-style git@...), else
+# nothing. Other hosts get no gh_repo: GitHub checks come from the DeviceCloud
+# GitHub App on github.com, and the console links gh_repo to github.com.
+github_repo_from_url() {
+    local url="${1%/}"
+    local re='^(https?://([^/@]*@)?|ssh://([^/@]*@)?|[^/@:]+@)(www\.)?github\.com[:/]([^/]+)/([^/]+)$'
+    local restore_case
+    restore_case=$(shopt -p nocasematch)
+    shopt -s nocasematch
+    if [[ "$url" =~ $re ]]; then
+        printf '%s/%s' "${BASH_REMATCH[5]}" "${BASH_REMATCH[6]%.git}"
+    fi
+    eval "$restore_case"
+}
+
+# True when the metadata input already sets key $1.
+metadata_has() {
+    printf '%s\n' "$metadata" | grep -Eq "^[[:space:]]*$1="
+}
+
+# GitHub context. DeviceCloud posts a GitHub check for a run carrying gh_repo +
+# gh_sha, and cancel_previous groups runs by gh_repo + gh_pr_number or
+# gh_branch (+ gh_check_name). The GitHub Action attaches these itself; here
+# they come from Bitrise's env vars, and a key set in the metadata input wins.
+# gh_run_id is the pipeline build (or, outside a pipeline, the build), so runs
+# from the same one are siblings that cancel_previous never cancels.
+gh_context_args=()
+add_gh_context() {
+    if [ -n "$2" ] && ! metadata_has "$1"; then
+        gh_context_args+=(-m "$1=$2")
+    fi
+}
+if [ "$include_github_context" != "false" ]; then
+    gh_repo_from_env=$(github_repo_from_url "$GIT_REPOSITORY_URL")
+    if [ -n "$gh_repo_from_env" ]; then
+        # The commit Bitrise reports build status on (for a PR, its head commit,
+        # not the pre-merged state Git Clone may build); the cloned commit for
+        # a build that no commit triggered.
+        add_gh_context gh_sha "${BITRISE_GIT_COMMIT:-$GIT_CLONE_COMMIT_HASH}"
+        add_gh_context gh_branch "$BITRISE_GIT_BRANCH"
+        add_gh_context gh_pr_number "$BITRISE_PULL_REQUEST"
+        if ! metadata_has gh_repo; then
+            add_gh_context gh_repo "$gh_repo_from_env"
+            if [ -n "$BITRISE_PULL_REQUEST" ]; then
+                add_gh_context gh_pr_url "https://github.com/$gh_repo_from_env/pull/$BITRISE_PULL_REQUEST"
+            fi
+        fi
+    fi
+    add_gh_context gh_run_id "${BITRISEIO_PIPELINE_ID:-$BITRISE_BUILD_SLUG}"
+fi
+
 # Refine variables
 [[ "$async" == "true" ]] && is_async="true"
 [[ "$google_play" == "true" ]] && is_google_play="true"
@@ -132,6 +183,7 @@ echo "disable_animations: $disable_animations"
 echo "quiet: $quiet"
 echo "use_beta: $use_beta"
 echo "check_name: $check_name"
+echo "include_github_context: $include_github_context"
 
 # check_name is passed as its own quoted `-m` pair rather than folded into
 # metadata_parsed, which expands unquoted: a check name containing a space would
@@ -180,6 +232,7 @@ ${is_disable_animations:+--disable-animations} \
 ${is_quiet:+--quiet} \
 ${env_list_parsed} \
 ${metadata_parsed} \
+${gh_context_args[*]} \
 \"$app_file\" \"$workspace\""
 
 # Capture the command output and display it
@@ -232,6 +285,7 @@ ${is_disable_animations:+--disable-animations} \
 ${is_quiet:+--quiet} \
 ${env_list_parsed} \
 ${metadata_parsed} \
+"${gh_context_args[@]}" \
 "$app_file" "$workspace" 2>&1) || EXIT_CODE=$?
 echo "$OUTPUT"
 

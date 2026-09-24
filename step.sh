@@ -1,5 +1,42 @@
 #!/bin/sh
 
+# Print one field of the `dcd status --json` document read from stdin: a string
+# as-is, anything else as compact JSON, nothing when the field is absent or
+# null. "flowResults" is the tests array cut down to name, status and failReason.
+# Exits 1 when stdin holds no JSON object.
+#
+# The CLI pretty-prints that document (JSON.stringify(obj, null, 2)), so the
+# compact-JSON greps this replaces ('"status":"...') never matched and every
+# status-derived output came out empty. node is always available here: the
+# step runs the CLI through npx.
+status_field() {
+    node -e '
+const text = require("fs").readFileSync(0, "utf8");
+const start = text.search(/^[ \t]*\{/m);
+let doc = null;
+if (start !== -1) {
+  try {
+    doc = JSON.parse(text.slice(start, text.lastIndexOf("}") + 1));
+  } catch (e) {
+    doc = null;
+  }
+}
+if (!doc || typeof doc !== "object" || Array.isArray(doc)) process.exit(1);
+const field = process.argv[1];
+const value =
+  field === "flowResults"
+    ? (Array.isArray(doc.tests) ? doc.tests : []).map((t) => {
+        const r = { name: t && t.name, status: t && t.status };
+        if (t && t.failReason) r.failReason = t.failReason;
+        return r;
+      })
+    : doc[field];
+if (value !== undefined && value !== null) {
+  process.stdout.write(typeof value === "string" ? value : JSON.stringify(value));
+}
+' "$1"
+}
+
 # Parse env variables
 env_list_parsed=""
 if [ -n "$env_list" ]; then
@@ -29,6 +66,57 @@ if [ -n "$metadata" ]; then
     done <<< "$metadata"
 fi
 
+# owner/repo for a github.com remote (https, ssh:// or scp-style git@...), else
+# nothing. Other hosts get no gh_repo: GitHub checks come from the DeviceCloud
+# GitHub App on github.com, and the console links gh_repo to github.com.
+github_repo_from_url() {
+    local url="${1%/}"
+    local re='^(https?://([^/@]*@)?|ssh://([^/@]*@)?|[^/@:]+@)(www\.)?github\.com[:/]([^/]+)/([^/]+)$'
+    local restore_case
+    restore_case=$(shopt -p nocasematch)
+    shopt -s nocasematch
+    if [[ "$url" =~ $re ]]; then
+        printf '%s/%s' "${BASH_REMATCH[5]}" "${BASH_REMATCH[6]%.git}"
+    fi
+    eval "$restore_case"
+}
+
+# True when the metadata input already sets key $1.
+metadata_has() {
+    printf '%s\n' "$metadata" | grep -Eq "^[[:space:]]*$1="
+}
+
+# GitHub context. DeviceCloud posts a GitHub check for a run carrying gh_repo +
+# gh_sha, and cancel_previous groups runs by gh_repo + gh_pr_number or
+# gh_branch (+ gh_check_name). The GitHub Action attaches these itself; here
+# they come from Bitrise's env vars, and a key set in the metadata input wins.
+# gh_run_id is the pipeline build (or, outside a pipeline, the build), so runs
+# from the same one are siblings that cancel_previous never cancels.
+gh_context_args=()
+add_gh_context() {
+    if [ -n "$2" ] && ! metadata_has "$1"; then
+        gh_context_args+=(-m "$1=$2")
+    fi
+}
+if [ "$include_github_context" != "false" ]; then
+    gh_repo_from_env=$(github_repo_from_url "$GIT_REPOSITORY_URL")
+    if [ -n "$gh_repo_from_env" ]; then
+        # The commit Bitrise reports build status on (for a PR, its head commit,
+        # not the pre-merged state Git Clone may build); the cloned commit for
+        # a build that no commit triggered.
+        add_gh_context gh_sha "${BITRISE_GIT_COMMIT:-$GIT_CLONE_COMMIT_HASH}"
+        add_gh_context gh_branch "$BITRISE_GIT_BRANCH"
+        add_gh_context gh_pr_number "$BITRISE_PULL_REQUEST"
+        if ! metadata_has gh_repo; then
+            add_gh_context gh_repo "$gh_repo_from_env"
+            if [ -n "$BITRISE_PULL_REQUEST" ]; then
+                add_gh_context gh_pr_url "https://github.com/$gh_repo_from_env/pull/$BITRISE_PULL_REQUEST"
+            fi
+        fi
+    fi
+    add_gh_context gh_run_id "${BITRISEIO_PIPELINE_ID:-$BITRISE_BUILD_SLUG}"
+fi
+
 # Refine variables
 [[ "$async" == "true" ]] && is_async="true"
 [[ "$google_play" == "true" ]] && is_google_play="true"
@@ -48,13 +136,14 @@ cd $BITRISE_SOURCE_DIR
 
 EXIT_CODE=0
 
-# Log all variables for debugging
+# Log all variables for debugging, except the API key itself: don't rely on
+# Bitrise's log redaction to catch a secret the step prints on purpose.
 echo "DCD variables:"
 echo "allure_path: $allure_path"
 echo "android_api_level: $android_api_level"
 echo "android_device: $android_device"
 echo "android_no_snapshot: $android_no_snapshot"
-echo "api_key: $api_key"
+echo "api_key: ${api_key:+[REDACTED]}"
 echo "api_url: $api_url"
 echo "app_binary_id: $app_binary_id"
 echo "app_file: $app_file"
@@ -94,13 +183,14 @@ echo "disable_animations: $disable_animations"
 echo "quiet: $quiet"
 echo "use_beta: $use_beta"
 echo "check_name: $check_name"
+echo "include_github_context: $include_github_context"
 
 # check_name is passed as its own quoted `-m` pair rather than folded into
 # metadata_parsed, which expands unquoted: a check name containing a space would
 # split into two argv entries and the stray word would land as a positional (app
 # file / workspace).
 echo "Running command: npx --yes \"$DCD_VERSION\" cloud --quiet \
---apiKey \"$api_key\" \
+--apiKey \"${api_key:+[REDACTED]}\" \
 ${allure_path:+--allure-path \"$allure_path\"} \
 ${is_android_no_snapshot:+--android-no-snapshot} \
 ${android_api_level:+--android-api-level \"$android_api_level\"} \
@@ -142,6 +232,7 @@ ${is_disable_animations:+--disable-animations} \
 ${is_quiet:+--quiet} \
 ${env_list_parsed} \
 ${metadata_parsed} \
+${gh_context_args[*]} \
 \"$app_file\" \"$workspace\""
 
 # Capture the command output and display it
@@ -194,6 +285,7 @@ ${is_disable_animations:+--disable-animations} \
 ${is_quiet:+--quiet} \
 ${env_list_parsed} \
 ${metadata_parsed} \
+"${gh_context_args[@]}" \
 "$app_file" "$workspace" 2>&1) || EXIT_CODE=$?
 echo "$OUTPUT"
 
@@ -209,36 +301,67 @@ UPLOAD_ID=$(echo "$OUTPUT" | grep -o 'upload=[a-zA-Z0-9-]*' | cut -d= -f2 | head
 if [ -n "$UPLOAD_ID" ]; then
     # Get test status using the status command
     STATUS_OUTPUT=$(npx --yes "$DCD_VERSION" status --json --upload-id "$UPLOAD_ID" --api-key "$api_key" ${api_url:+--api-url "$api_url"})
-    
-    # Extract values from status JSON using grep and sed
+
     # Console URL
     CONSOLE_URL=$(echo "$OUTPUT" | grep -o 'https://console\.devicecloud\.dev/results?upload=[a-zA-Z0-9-]*')
     envman add --key DEVICE_CLOUD_CONSOLE_URL --value "$CONSOLE_URL"
-    
-    # Status
-    TEST_STATUS=$(echo "$STATUS_OUTPUT" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+
+    # Status, flow results and binary id, read from the status JSON. ERROR marks
+    # a status call that returned no JSON at all; the verdict below then rests
+    # on the CLI's exit code alone, as it did while these outputs were empty.
+    if TEST_STATUS=$(printf '%s' "$STATUS_OUTPUT" | status_field status); then
+        FLOW_RESULTS=$(printf '%s' "$STATUS_OUTPUT" | status_field flowResults)
+        APP_BINARY_ID=$(printf '%s' "$STATUS_OUTPUT" | status_field appBinaryId)
+        SUPERSEDED_BY=$(printf '%s' "$STATUS_OUTPUT" | status_field supersededBy)
+    else
+        echo "Could not read the upload status from 'dcd status --json'; reporting ERROR. Output was:"
+        echo "$STATUS_OUTPUT"
+        TEST_STATUS="ERROR"
+        FLOW_RESULTS=""
+        APP_BINARY_ID=""
+        SUPERSEDED_BY=""
+    fi
+
+    # supersededBy: a newer run from the same CI context replaced this one
+    # (cancel_previous) and cancelled its queued tests. The API rolls those up
+    # to FAILED, but the run no longer speaks for the commit, so, like
+    # `dcd cloud` itself, the step does not fail for it. Absent on every other
+    # run, and on APIs that predate the field.
+    if [ -n "$SUPERSEDED_BY" ]; then
+        echo "Superseded by $SUPERSEDED_BY: a newer run from the same CI context replaced this one, so this step passes."
+        if [ -n "$CONSOLE_URL" ]; then
+            echo "Newer run: ${CONSOLE_URL/$UPLOAD_ID/$SUPERSEDED_BY}"
+        fi
+        TEST_STATUS="SUPERSEDED"
+    fi
+
     envman add --key DEVICE_CLOUD_UPLOAD_STATUS --value "$TEST_STATUS"
-    
-    # Flow Results
-    FLOW_RESULTS=$(echo "$STATUS_OUTPUT" | grep -o '"tests":\[[^]]*\]')
-    envman add --key DEVICE_CLOUD_FLOW_RESULTS --value "$FLOW_RESULTS"
-    
-    # App Binary ID
-    APP_BINARY_ID=$(echo "$STATUS_OUTPUT" | grep -o '"appBinaryId":"[^"]*"' | cut -d'"' -f4)
+    envman add --key DEVICE_CLOUD_FLOW_RESULTS --value "${FLOW_RESULTS:-[]}"
     if [ -n "$APP_BINARY_ID" ]; then
         envman add --key DEVICE_CLOUD_APP_BINARY_ID --value "$APP_BINARY_ID"
     fi
-    
+
     # Set exit code based on status. A bad status fails the step; a good one
     # only clears the step if the CLI agreed. Clearing it unconditionally is
     # what let a cancelled run (CLI exit 2) report green when the status
-    # rollup wrongly said PASSED.
-    if [ "$TEST_STATUS" = "FAILED" ] || [ "$TEST_STATUS" = "CANCELLED" ]; then
+    # rollup wrongly said PASSED. A superseded run passes whatever dcd exited
+    # with: an older CLI that doesn't know the state exits 2 for it.
+    if [ "$TEST_STATUS" = "SUPERSEDED" ]; then
+        if [ "$CLI_EXIT_CODE" -ne 0 ]; then
+            echo "dcd exited $CLI_EXIT_CODE, but the run was superseded; not failing the step."
+        fi
+        EXIT_CODE=0
+    elif [ "$TEST_STATUS" = "FAILED" ] || [ "$TEST_STATUS" = "CANCELLED" ]; then
         EXIT_CODE=1
     elif [ "$TEST_STATUS" = "PASSED" ] && [ "$CLI_EXIT_CODE" -eq 0 ]; then
         EXIT_CODE=0
     elif [ "$CLI_EXIT_CODE" -ne 0 ]; then
         echo "dcd exited $CLI_EXIT_CODE; failing the step despite upload status '$TEST_STATUS'."
+        EXIT_CODE=1
+    elif [ "$TEST_STATUS" = "ERROR" ] && [ "$is_json_file" = "true" ] && [ "$is_async" != "true" ]; then
+        # json_file keeps dcd's exit code at 0 on a failed run, so without a
+        # status nothing is left to tell a pass from a failure.
+        echo "The upload status is unknown and json_file keeps dcd's exit code at 0; failing the step."
         EXIT_CODE=1
     fi
 fi

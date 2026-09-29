@@ -46,3 +46,14 @@ bats test/test.bats
 
 Run the suite under bash 4.1 or later: bash 3.2 (macOS's `/bin/bash`) does not
 fail a test on a `[[ ]]` assertion that isn't its last command.
+
+## Releasing
+
+Releases are cut by [release-please](https://github.com/googleapis/release-please).
+
+1. PR titles must follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, ...). The `PR Title` check enforces this. PRs are squash-merged, so the title becomes the commit that release-please reads. `feat` cuts a minor release; `fix`, `perf`, `deps`, `revert` and `refactor` cut a patch; `docs`, `chore`, `test`, `ci`, `build` and `style` cut nothing.
+2. release-please keeps a `chore(main): release X.Y.Z` PR open. It updates `CHANGELOG.md` and the two lines marked `x-release-please-version`: `BITRISE_STEP_VERSION` in `bitrise.yml` and the default `DCD_CI_WRAPPER_VERSION` in `step.sh`. A test checks that they match. Don't bump them by hand.
+3. Merging it creates the bare `X.Y.Z` tag (the StepLib requires no `v`) and the GitHub Release.
+4. Publishing to the [Bitrise StepLib](https://github.com/bitrise-io/bitrise-steplib) is still manual. Check out the new tag, run `bitrise run share-this-step` (it shares into our fork, `devicecloud-dev/bitrise-steplib`), then open the PR from the fork to `bitrise-io/bitrise-steplib`.
+
+Never move or delete a tag once it's been shared: the StepLib pins each version to its tag's commit.

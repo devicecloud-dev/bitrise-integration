@@ -1,0 +1,56 @@
+name: Release
+
+# A push to `main` makes release-please open or update a Release PR. The PR
+# bumps CHANGELOG.md, the manifest, and the two annotated version lines
+# (`x-release-please-version`): BITRISE_STEP_VERSION in bitrise.yml and the
+# DCD_CI_WRAPPER_VERSION default in step.sh. Merging it creates the bare
+# X.Y.Z tag (the StepLib requires no `v`) and the GitHub Release, whose body is
+# the freshly-rendered changelog section.
+#
+# Publishing to the Bitrise StepLib stays manual: see "Releasing" in the
+# README.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Serialise runs so two of them never race to create one release. A running
+# release is never cancelled.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  release-please:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    # Empty until the automation GitHub App secrets are configured (the same
+    # App as dcd-cli's release-please). We use an App token (not GITHUB_TOKEN)
+    # so the Release PR triggers CI and the PR-title check. PRs opened by
+    # GITHUB_TOKEN do not. Falls back to GITHUB_TOKEN until the App is set up,
+    # so this is safe to merge before then.
+    env:
+      BOT_APP_ID: ${{ secrets.BOT_APP_ID }}
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - uses: actions/create-github-app-token@v3
+        id: app-token
+        if: env.BOT_APP_ID != ''
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+      - uses: googleapis/release-please-action@v5
+        id: release
+        with:
+          token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          target-branch: main
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

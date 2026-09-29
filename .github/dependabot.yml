@@ -1,0 +1,20 @@
+version: 2
+updates:
+  # GitHub Actions used by our workflows. The step itself is a shell script
+  # with no manifest Dependabot can read; the DCD CLI it runs is resolved from
+  # npm at run time.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    # Let a new action release age a week before we pick it up.
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci
+    groups:
+      # One PR for ALL action bumps (including majors). Actions are low-risk
+      # and quick to eyeball together; no need for a PR each.
+      actions:
+        patterns:
+          - "*"

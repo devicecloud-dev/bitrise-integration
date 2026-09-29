@@ -10,7 +10,7 @@ jobs:
     name: BATS tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install bats
         run: sudo npm install -g bats
       - name: Run BATS tests
@@ -20,7 +20,7 @@ jobs:
     name: ShellCheck (advisory)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: ShellCheck step.sh (as bash, advisory)
         # step.sh runs under Bitrise's bash toolkit (step.yml: toolkit.bash), so
         # lint it as bash. Advisory (|| true): the script predates this workflow

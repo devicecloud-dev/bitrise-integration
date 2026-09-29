@@ -238,10 +238,12 @@ ${gh_context_args[*]} \
 # Capture the command output and display it
 echo "Waiting for full test results so we can parse outputs... this may take a while for non-async tests"
 echo "Check status at https://console.devicecloud.dev/results"
-# Forward CI identity so DCD notices can target this Bitrise step. DCD_STEP_VERSION
-# can be set to forward the step version; provider alone enables CI-surface notices.
+# Forward CI identity so DCD notices can target this Bitrise step, and by
+# version. The CLI reads these env vars. The default is the step's own version:
+# release-please bumps it together with BITRISE_STEP_VERSION in bitrise.yml, and
+# a test checks they match. DCD_STEP_VERSION can override it at runtime.
 export DCD_CI_PROVIDER="bitrise"
-export DCD_CI_WRAPPER_VERSION="${DCD_STEP_VERSION:-}"
+export DCD_CI_WRAPPER_VERSION="${DCD_STEP_VERSION:-1.4.0}" # x-release-please-version
 OUTPUT=$(npx --yes "$DCD_VERSION" cloud --quiet \
 --apiKey "$api_key" \
 ${allure_path:+--allure-path "$allure_path"} \

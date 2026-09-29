@@ -28,6 +28,7 @@ done
 case "$sub" in
   cloud)
     echo "STUB_CLOUD_CALLED_WITH: $*"
+    echo "STUB_CI_IDENTITY: ${DCD_CI_PROVIDER:-}/${DCD_CI_WRAPPER_VERSION:-}"
     # One line per argv entry as well, so a test can tell "-m a=b c" (three
     # words, from an unquoted expansion) from "-m" plus "a=b c" (two args).
     for a in "$@"; do echo "STUB_CLOUD_ARG: $a"; done
@@ -86,7 +87,7 @@ STUB
   unset api_key app_file workspace android_device android_api_level ios_device \
         name check_name async google_play debug disable_animations use_beta \
         env_list metadata download_artifacts json_file cancel_previous \
-        include_github_context \
+        include_github_context DCD_STEP_VERSION \
         STUB_STATUS STUB_CLOUD_EXIT STUB_STATUS_FIXTURE STUB_STATUS_RAW
   # ...and the Bitrise env vars the GitHub context is derived from, in case
   # the suite itself runs on Bitrise.
@@ -537,4 +538,39 @@ $(cat "${FIXTURES}/status-passed.json")"
   run bash "${TEST_DIR}/step.sh"
   [ "$status" -eq 1 ]
   [ "$(envman_value DEVICE_CLOUD_UPLOAD_STATUS)" = "ERROR" ]
+}
+
+# --- Step version -------------------------------------------------------------
+
+# The version in each file release-please bumps, or in its manifest.
+step_versions() {
+  local root="${BATS_TEST_DIRNAME}/.."
+  printf 'bitrise.yml=%s\n' "$(sed -n 's/^ *- BITRISE_STEP_VERSION: "\([^"]*\)".*/\1/p' "${root}/bitrise.yml")"
+  printf 'step.sh=%s\n' "$(sed -n 's/^export DCD_CI_WRAPPER_VERSION="\${DCD_STEP_VERSION:-\([^}]*\)}".*/\1/p' "${root}/step.sh")"
+  printf 'manifest=%s\n' "$(sed -n 's/^ *"\." *: *"\([^"]*\)".*/\1/p' "${root}/.release-please-manifest.json")"
+}
+
+@test "bitrise.yml, step.sh and the release-please manifest carry the same version" {
+  run step_versions
+  [ "$status" -eq 0 ]
+  echo "$output"
+  version="$(printf '%s\n' "$output" | sed -n 's/^manifest=//p')"
+  [ "$output" = "$(printf 'bitrise.yml=%s\nstep.sh=%s\nmanifest=%s' "$version" "$version" "$version")" ]
+  [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+}
+
+@test "reports the step version to the CLI as its CI identity" {
+  # DeviceCloud notices target the step by version, so the default must be the
+  # released version. release-please bumps it along with bitrise.yml.
+  version="$(sed -n 's/^ *"\." *: *"\([^"]*\)".*/\1/p' "${BATS_TEST_DIRNAME}/../.release-please-manifest.json")"
+  [ -n "$version" ]
+  export api_key="k"
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 0 ]
+  # grep, not [[ ]]: bash 3.2 ignores a failing [[ ]] that isn't the last command.
+  printf '%s\n' "$output" | grep -qxF "STUB_CI_IDENTITY: bitrise/${version}"
+
+  export DCD_STEP_VERSION="9.9.9"
+  run bash "${TEST_DIR}/step.sh"
+  [[ "$output" == *"STUB_CI_IDENTITY: bitrise/9.9.9"* ]]
 }

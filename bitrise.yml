@@ -5,7 +5,8 @@ app:
   envs:
     # If you want to share this step into a StepLib
     - BITRISE_STEP_ID: device-cloud-for-maestro
-    - BITRISE_STEP_VERSION: "1.4.0"
+    # Bumped by release-please (release-please-config.json extra-files).
+    - BITRISE_STEP_VERSION: "1.4.0" # x-release-please-version
     - BITRISE_STEP_GIT_CLONE_URL: https://github.com/devicecloud-dev/bitrise-integration.git
     - MY_STEPLIB_REPO_FORK_GIT_URL: https://github.com/devicecloud-dev/bitrise-steplib.git
 

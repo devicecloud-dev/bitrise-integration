@@ -320,6 +320,22 @@ inputs:
       is_expand: true
       is_required: false
 
+  - priority: ""
+    opts:
+      title: "Priority"
+      summary: "Run priority within your organization (low, normal or high). Reorders only your own queued runs; never moves them ahead of other customers. Leave empty for normal."
+      description: |-
+        Decides which of your organization's own queued runs starts first, across
+        your whole concurrency pool, for every flow in this run. It never makes a
+        run start earlier relative to other customers: your organization keeps the
+        same place in the shared queue, and priority only picks which of your runs
+        uses it. Runs queued longer than 6 hours are promoted first, so `low` runs
+        are never starved, and retries keep the run's priority.
+
+        Options: `low`, `normal`, `high`. Leave empty for the default, `normal`.
+      is_expand: true
+      is_required: false
+
   - render_engine: ""
     opts:
       title: "Render Engine"

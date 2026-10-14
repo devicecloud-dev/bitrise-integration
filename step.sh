@@ -172,6 +172,7 @@ echo "maestro_version: $maestro_version"
 echo "metadata: $metadata"
 echo "name: $name"
 echo "orientation: $orientation"
+echo "priority: $priority"
 echo "report: $report"
 echo "retry: $retry"
 echo "runner_type: $runner_type"
@@ -222,6 +223,7 @@ ${maestro_version:+--maestro-version \"$maestro_version\"} \
 ${name:+--name \"$name\"} \
 ${check_name:+-m \"gh_check_name=$check_name\"} \
 ${orientation:+--orientation \"$orientation\"} \
+${priority:+--priority \"$priority\"} \
 ${report:+--report \"$report\"} \
 ${retry:+--retry \"$retry\"} \
 ${runner_type:+--runner-type \"$runner_type\"} \
@@ -277,6 +279,7 @@ ${maestro_version:+--maestro-version "$maestro_version"} \
 ${name:+--name "$name"} \
 ${check_name:+-m "gh_check_name=$check_name"} \
 ${orientation:+--orientation "$orientation"} \
+${priority:+--priority "$priority"} \
 ${report:+--report "$report"} \
 ${retry:+--retry "$retry"} \
 ${runner_type:+--runner-type "$runner_type"} \

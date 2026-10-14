@@ -245,7 +245,7 @@ echo "Check status at https://console.devicecloud.dev/results"
 # release-please bumps it together with BITRISE_STEP_VERSION in bitrise.yml, and
 # a test checks they match. DCD_STEP_VERSION can override it at runtime.
 export DCD_CI_PROVIDER="bitrise"
-export DCD_CI_WRAPPER_VERSION="${DCD_STEP_VERSION:-1.4.0}" # x-release-please-version
+export DCD_CI_WRAPPER_VERSION="${DCD_STEP_VERSION:-1.5.0}" # x-release-please-version
 OUTPUT=$(npx --yes "$DCD_VERSION" cloud --quiet \
 --apiKey "$api_key" \
 ${allure_path:+--allure-path "$allure_path"} \

@@ -86,7 +86,7 @@ STUB
   # runner may have exported so each test specifies exactly what it wants.
   unset api_key app_file workspace android_device android_api_level ios_device \
         name check_name async google_play debug disable_animations use_beta \
-        env_list metadata download_artifacts json_file cancel_previous \
+        env_list metadata download_artifacts json_file cancel_previous priority \
         include_github_context DCD_STEP_VERSION \
         STUB_STATUS STUB_CLOUD_EXIT STUB_STATUS_FIXTURE STUB_STATUS_RAW
   # ...and the Bitrise env vars the GitHub context is derived from, in case
@@ -212,6 +212,21 @@ teardown() {
   run bash "${TEST_DIR}/step.sh"
   [ "$status" -eq 0 ]
   [[ "$output" != *"--cancel-previous"* ]]
+}
+
+@test "passes --priority only when priority is set" {
+  export api_key="k"
+
+  export priority="high"
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"STUB_CLOUD_CALLED_WITH:"*"--priority high"* ]]
+  [[ "$output" == *'--priority "high"'* ]]
+
+  export priority=""
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"--priority"* ]]
 }
 
 @test "boolean flags appear only when their inputs are true" {

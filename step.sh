@@ -186,6 +186,21 @@ echo "use_beta: $use_beta"
 echo "check_name: $check_name"
 echo "include_github_context: $include_github_context"
 
+# The CLI's positionals are [app file] [flows]. With app_binary_id set, it reads
+# the first one as the flows and rejects a second ("You cannot provide both an
+# appBinaryId and a binary file"), and an empty "$app_file" still counts as one.
+# So the app file goes in only when it's set.
+positionals=()
+if [ -n "$app_file" ]; then
+    positionals+=("$app_file")
+fi
+positionals+=("$workspace")
+# The same, quoted like the flags, for the "Running command" line.
+positionals_display=""
+for positional in "${positionals[@]}"; do
+    positionals_display="${positionals_display:+$positionals_display }\"$positional\""
+done
+
 # check_name is passed as its own quoted `-m` pair rather than folded into
 # metadata_parsed, which expands unquoted: a check name containing a space would
 # split into two argv entries and the stray word would land as a positional (app
@@ -235,7 +250,7 @@ ${is_quiet:+--quiet} \
 ${env_list_parsed} \
 ${metadata_parsed} \
 ${gh_context_args[*]} \
-\"$app_file\" \"$workspace\""
+${positionals_display}"
 
 # Capture the command output and display it
 echo "Waiting for full test results so we can parse outputs... this may take a while for non-async tests"
@@ -291,7 +306,7 @@ ${is_quiet:+--quiet} \
 ${env_list_parsed} \
 ${metadata_parsed} \
 "${gh_context_args[@]}" \
-"$app_file" "$workspace" 2>&1) || EXIT_CODE=$?
+"${positionals[@]}" 2>&1) || EXIT_CODE=$?
 echo "$OUTPUT"
 
 # The CLI's exit code is the primary verdict: it is computed by the process that

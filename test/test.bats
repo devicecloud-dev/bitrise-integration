@@ -288,6 +288,28 @@ teardown() {
   [[ "$output" == *"-m sha=abc"* ]]
 }
 
+@test "keeps env_list and metadata values with spaces in one argument" {
+  # Each line is one -e/-m argument: a space in a value must not split it, or
+  # the stray word lands as a positional. Blank lines are still skipped, and a
+  # line's leading and trailing whitespace is trimmed. (`|| false`: bash 3.2
+  # ignores a failed [[ ]] unless it's a test's last command.)
+  export api_key="k"
+  export env_list=$'USER_NAME=Jane Doe\n\n  GREETING=hello  world  \n'
+  export metadata=$'team=Mobile QA\nbranch=main'
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'STUB_CLOUD_ARG: -e\nSTUB_CLOUD_ARG: USER_NAME=Jane Doe\n'* ]] || false
+  [[ "$output" == *$'STUB_CLOUD_ARG: -e\nSTUB_CLOUD_ARG: GREETING=hello  world\n'* ]] || false
+  [[ "$output" == *$'STUB_CLOUD_ARG: -m\nSTUB_CLOUD_ARG: team=Mobile QA\n'* ]] || false
+  [[ "$output" == *$'STUB_CLOUD_ARG: -m\nSTUB_CLOUD_ARG: branch=main\n'* ]] || false
+  # Two of each: the blank line added nothing.
+  [ "$(printf '%s\n' "$output" | grep -c '^STUB_CLOUD_ARG: -e$')" -eq 2 ]
+  [ "$(printf '%s\n' "$output" | grep -c '^STUB_CLOUD_ARG: -m$')" -eq 2 ]
+  # The logged command shows each value quoted, in one piece.
+  [[ "$output" == *'-e "USER_NAME=Jane Doe" -e "GREETING=hello  world"'* ]] || false
+  [[ "$output" == *'-m "team=Mobile QA" -m "branch=main"'* ]] || false
+}
+
 # --- GitHub context from Bitrise env vars ------------------------------------
 
 @test "derives the gh_* context for a GitHub PR build" {

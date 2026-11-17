@@ -37,14 +37,16 @@ if (value !== undefined && value !== null) {
 ' "$1"
 }
 
-# Parse env variables
-env_list_parsed=""
+# Parse env variables: each KEY=VALUE line of env_list becomes `-e KEY=VALUE`,
+# skipping blank lines. An array keeps a value with spaces in one argument.
+# read trims each line's leading and trailing whitespace.
+env_args=()
+env_display=""
 if [ -n "$env_list" ]; then
-    # Convert newline-separated key-value pairs to -e KEY=VALUE format
-    while IFS='=' read -r key value; do
-        if [ -n "$key" ]; then
-            # Append each env var with -e prefix
-            env_list_parsed="$env_list_parsed -e $key=$value"
+    while read -r pair; do
+        if [ -n "${pair%%=*}" ]; then
+            env_args+=(-e "$pair")
+            env_display="$env_display -e \"$pair\""
         fi
     done <<< "$env_list"
 fi
@@ -56,12 +58,14 @@ else
     DCD_VERSION="@devicecloud.dev/dcd@>=4.4.0"
 fi
 
-# Parse metadata list (similar to env_list)
-metadata_parsed=""
+# Parse metadata list, as env_list: each key=value line becomes `-m key=value`.
+meta_args=()
+meta_display=""
 if [ -n "$metadata" ]; then
-    while IFS='=' read -r key value; do
-        if [ -n "$key" ]; then
-            metadata_parsed="$metadata_parsed -m $key=$value"
+    while read -r pair; do
+        if [ -n "${pair%%=*}" ]; then
+            meta_args+=(-m "$pair")
+            meta_display="$meta_display -m \"$pair\""
         fi
     done <<< "$metadata"
 fi
@@ -186,10 +190,23 @@ echo "use_beta: $use_beta"
 echo "check_name: $check_name"
 echo "include_github_context: $include_github_context"
 
-# check_name is passed as its own quoted `-m` pair rather than folded into
-# metadata_parsed, which expands unquoted: a check name containing a space would
-# split into two argv entries and the stray word would land as a positional (app
-# file / workspace).
+# The CLI's positionals are [app file] [flows]. With app_binary_id set, it reads
+# the first one as the flows and rejects a second ("You cannot provide both an
+# appBinaryId and a binary file"), and an empty "$app_file" still counts as one.
+# So the app file goes in only when it's set.
+positionals=()
+if [ -n "$app_file" ]; then
+    positionals+=("$app_file")
+fi
+positionals+=("$workspace")
+# The same, quoted like the flags, for the "Running command" line.
+positionals_display=""
+for positional in "${positionals[@]}"; do
+    positionals_display="${positionals_display:+$positionals_display }\"$positional\""
+done
+
+# check_name goes in as its own `-m gh_check_name=...` pair, quoted so a name
+# with a space stays one argument.
 echo "Running command: npx --yes \"$DCD_VERSION\" cloud --quiet \
 --apiKey \"${api_key:+[REDACTED]}\" \
 ${allure_path:+--allure-path \"$allure_path\"} \
@@ -232,10 +249,10 @@ ${is_show_crosshairs:+--show-crosshairs} \
 ${app_url:+--app-url \"$app_url\"} \
 ${is_disable_animations:+--disable-animations} \
 ${is_quiet:+--quiet} \
-${env_list_parsed} \
-${metadata_parsed} \
+${env_display} \
+${meta_display} \
 ${gh_context_args[*]} \
-\"$app_file\" \"$workspace\""
+${positionals_display}"
 
 # Capture the command output and display it
 echo "Waiting for full test results so we can parse outputs... this may take a while for non-async tests"
@@ -288,10 +305,10 @@ ${is_show_crosshairs:+--show-crosshairs} \
 ${app_url:+--app-url "$app_url"} \
 ${is_disable_animations:+--disable-animations} \
 ${is_quiet:+--quiet} \
-${env_list_parsed} \
-${metadata_parsed} \
+"${env_args[@]}" \
+"${meta_args[@]}" \
 "${gh_context_args[@]}" \
-"$app_file" "$workspace" 2>&1) || EXIT_CODE=$?
+"${positionals[@]}" 2>&1) || EXIT_CODE=$?
 echo "$OUTPUT"
 
 # The CLI's exit code is the primary verdict: it is computed by the process that

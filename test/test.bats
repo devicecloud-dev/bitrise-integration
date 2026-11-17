@@ -84,7 +84,7 @@ STUB
 
   # step.sh reads Bitrise inputs from lowercase env vars; clear any the host
   # runner may have exported so each test specifies exactly what it wants.
-  unset api_key app_file workspace android_device android_api_level ios_device \
+  unset api_key app_file app_binary_id workspace android_device android_api_level ios_device \
         name check_name async google_play debug disable_animations use_beta \
         env_list metadata download_artifacts json_file cancel_previous priority \
         include_github_context DCD_STEP_VERSION \
@@ -118,6 +118,35 @@ teardown() {
   [[ "$output" == *"--apiKey test-key"* ]]
   [[ "$output" == *"app.apk"* ]]
   [[ "$output" == *".maestro"* ]]
+}
+
+@test "invokes npx cloud with --app-binary-id and the workspace as the only positional" {
+  # With --app-binary-id the CLI reads the first positional as the flows and
+  # rejects a second, so an empty app_file must not become an empty first
+  # positional ahead of the workspace. (`|| false`: bash 3.2 ignores a failed
+  # [[ ]] unless it's a test's last command.)
+  export api_key="test-key"
+  export app_binary_id="bin-123"
+  export app_file=""
+  export workspace=".maestro"
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'STUB_CLOUD_ARG: --app-binary-id\nSTUB_CLOUD_ARG: bin-123\n'* ]] || false
+  # The CLI's argv ends with the workspace and has no empty entry.
+  cloud_args=()
+  for line in "${lines[@]}"; do
+    case "$line" in
+      "STUB_CLOUD_ARG: "*) cloud_args+=("${line#STUB_CLOUD_ARG: }") ;;
+    esac
+  done
+  [ "${cloud_args[$(( ${#cloud_args[@]} - 1 ))]}" = ".maestro" ]
+  for arg in "${cloud_args[@]}"; do
+    [ -n "$arg" ]
+  done
+  # So does the logged command, with no "" where the app file would go.
+  running_line="$(printf '%s\n' "$output" | grep '^Running command:')"
+  [[ "$running_line" == *'--app-binary-id "bin-123"'*' ".maestro"' ]] || false
+  [[ "$running_line" != *'""'* ]] || false
 }
 
 @test "never prints the API key itself" {
@@ -257,6 +286,28 @@ teardown() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"-m branch=main"* ]]
   [[ "$output" == *"-m sha=abc"* ]]
+}
+
+@test "keeps env_list and metadata values with spaces in one argument" {
+  # Each line is one -e/-m argument: a space in a value must not split it, or
+  # the stray word lands as a positional. Blank lines are still skipped, and a
+  # line's leading and trailing whitespace is trimmed. (`|| false`: bash 3.2
+  # ignores a failed [[ ]] unless it's a test's last command.)
+  export api_key="k"
+  export env_list=$'USER_NAME=Jane Doe\n\n  GREETING=hello  world  \n'
+  export metadata=$'team=Mobile QA\nbranch=main'
+  run bash "${TEST_DIR}/step.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'STUB_CLOUD_ARG: -e\nSTUB_CLOUD_ARG: USER_NAME=Jane Doe\n'* ]] || false
+  [[ "$output" == *$'STUB_CLOUD_ARG: -e\nSTUB_CLOUD_ARG: GREETING=hello  world\n'* ]] || false
+  [[ "$output" == *$'STUB_CLOUD_ARG: -m\nSTUB_CLOUD_ARG: team=Mobile QA\n'* ]] || false
+  [[ "$output" == *$'STUB_CLOUD_ARG: -m\nSTUB_CLOUD_ARG: branch=main\n'* ]] || false
+  # Two of each: the blank line added nothing.
+  [ "$(printf '%s\n' "$output" | grep -c '^STUB_CLOUD_ARG: -e$')" -eq 2 ]
+  [ "$(printf '%s\n' "$output" | grep -c '^STUB_CLOUD_ARG: -m$')" -eq 2 ]
+  # The logged command shows each value quoted, in one piece.
+  [[ "$output" == *'-e "USER_NAME=Jane Doe" -e "GREETING=hello  world"'* ]] || false
+  [[ "$output" == *'-m "team=Mobile QA" -m "branch=main"'* ]] || false
 }
 
 # --- GitHub context from Bitrise env vars ------------------------------------
